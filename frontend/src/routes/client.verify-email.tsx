@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { CheckCircle2, XCircle } from "lucide-react";
+import { buildApiUrl } from "@/lib/client-api";
 
 export const Route = createFileRoute("/client/verify-email")({
   head: () => ({
@@ -26,14 +27,9 @@ function VerifyEmailPage() {
       return;
     }
 
-    const apiUrl = import.meta.env.VITE_CLIENT_API_URL as string | undefined;
-    if (!apiUrl) {
-      setState("error");
-      setMessage("Client API is not configured.");
-      return;
-    }
+    const apiUrl = buildApiUrl("/auth/verify-email");
 
-    fetch(`${apiUrl}/auth/verify-email`, {
+    fetch(apiUrl, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ token }),

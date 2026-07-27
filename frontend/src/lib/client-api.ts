@@ -6,8 +6,24 @@
  * set by the API on the API's origin. On 401 we transparently refresh once.
  */
 
-const API_URL =
-  (import.meta.env.VITE_CLIENT_API_URL as string | undefined)?.replace(/\/$/, "") ?? "";
+const DEFAULT_API_BASE_URL = "https://netweavesolutions.onrender.com";
+
+function normalizeApiBaseUrl(value?: string) {
+  const trimmed = value?.trim();
+  if (!trimmed) return DEFAULT_API_BASE_URL;
+  return trimmed.replace(/\/$/, "");
+}
+
+const API_URL = normalizeApiBaseUrl(import.meta.env.VITE_CLIENT_API_URL as string | undefined);
+
+export function getApiBaseUrl() {
+  return API_URL;
+}
+
+export function buildApiUrl(path: string) {
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return `${API_URL}${normalizedPath}`;
+}
 
 let accessToken: string | null = null;
 type Listener = (token: string | null) => void;
@@ -40,14 +56,13 @@ export function isApiConfigured() {
 }
 
 async function raw(path: string, init: RequestInit = {}): Promise<Response> {
-  if (!API_URL)
-    throw new ApiError(0, "Client API not configured (VITE_CLIENT_API_URL missing)", null);
+  const targetUrl = buildApiUrl(path);
   const headers = new Headers(init.headers);
   if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
   if (accessToken) headers.set("authorization", `Bearer ${accessToken}`);
 
   try {
-    return await fetch(`${API_URL}${path}`, { ...init, headers, credentials: "include" });
+    return await fetch(targetUrl, { ...init, headers, credentials: "include" });
   } catch (error) {
     if (error instanceof TypeError) {
       throw new ApiError(
