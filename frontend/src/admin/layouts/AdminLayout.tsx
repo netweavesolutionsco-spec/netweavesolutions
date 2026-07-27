@@ -8,7 +8,7 @@ import { NotificationDrawer } from "@/admin/components/NotificationDrawer";
 export function AdminLayout({ children }: { children?: ReactNode }) {
   return (
     <AdminUIProvider>
-      <div className="flex min-h-screen w-full bg-gradient-to-br from-background via-background to-[color-mix(in_oklab,var(--brand)_4%,transparent)]">
+      <div className="flex min-h-screen w-full bg-linear-to-br from-background via-background to-[color-mix(in_oklab,var(--brand)_4%,transparent)]">
         <AdminSidebar />
         <div className="flex min-h-screen flex-1 flex-col">
           <AdminTopbar />

@@ -57,7 +57,7 @@ export function StatCard({
           )}
         </div>
         {icon && (
-          <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-to-br from-[color-mix(in_oklab,var(--brand)_25%,transparent)] to-[color-mix(in_oklab,var(--brand-3)_20%,transparent)] text-[var(--brand)]">
+          <div className="grid h-10 w-10 place-items-center rounded-xl bg-linear-to-br from-[color-mix(in_oklab,var(--brand)_25%,transparent)] to-[color-mix(in_oklab,var(--brand-3)_20%,transparent)] text-[var(--brand)]">
             {icon}
           </div>
         )}

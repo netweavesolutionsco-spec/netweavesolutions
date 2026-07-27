@@ -182,7 +182,7 @@ export function PricingPage() {
               <Save className="mr-1.5 h-3.5 w-3.5" /> Save draft
             </Button>
             <Button
-              className="bg-gradient-to-r from-[var(--brand)] to-[var(--brand-3)] text-white"
+              className="bg-linear-to-r from-[var(--brand)] to-[var(--brand-3)] text-white"
               size="sm"
               onClick={() => publish.mutate()}
               disabled={publish.isPending}
@@ -203,7 +203,7 @@ export function PricingPage() {
             )}
           >
             {p.featured && (
-              <div className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[var(--brand)] to-[var(--brand-3)] px-2 py-0.5 text-[10px] font-semibold text-white">
+              <div className="absolute right-4 top-4 inline-flex items-center gap-1 rounded-full bg-linear-to-r from-[var(--brand)] to-[var(--brand-3)] px-2 py-0.5 text-[10px] font-semibold text-white">
                 <Star className="h-3 w-3" /> POPULAR
               </div>
             )}

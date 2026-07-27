@@ -14,7 +14,7 @@ export function MediaPage() {
         actions={
           <Button
             size="sm"
-            className="bg-gradient-to-r from-[var(--brand)] to-[var(--brand-3)] text-white"
+            className="bg-linear-to-r from-[var(--brand)] to-[var(--brand-3)] text-white"
           >
             <Upload className="mr-1.5 h-3.5 w-3.5" /> Upload
           </Button>

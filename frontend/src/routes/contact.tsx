@@ -90,13 +90,13 @@ function Contact() {
 
   return (
     <Section className="pt-20 md:pt-28">
-      <div className="text-center max-w-3xl mx-auto">
+        <div className="text-center max-w-3xl mx-auto">
         <span className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur">
           Get In Touch
         </span>
         <h1 className="mt-5 text-4xl md:text-6xl font-extrabold tracking-[-0.03em] text-foreground">
           Let's Discuss{" "}
-          <span className="bg-gradient-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
+          <span className="bg-linear-to-r from-indigo-400 to-cyan-400 bg-clip-text text-transparent">
             Your Project
           </span>
         </h1>
@@ -109,7 +109,7 @@ function Contact() {
       <div className="mt-12 grid gap-6 lg:grid-cols-[1fr_1.2fr]">
         {/* Left: contact info */}
         <div className="space-y-6">
-          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-indigo-700 via-indigo-900 to-slate-950 p-8">
+          <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-linear-to-br from-indigo-700 via-indigo-900 to-slate-950 p-8">
             <div
               className="absolute inset-0 opacity-30"
               style={{
@@ -179,7 +179,7 @@ function Contact() {
               <span className="text-xs text-white/50">Mon–Sat · 10am–8pm IST</span>
             </div>
 
-            <div className="relative mt-5 h-56 overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950">
+            <div className="relative mt-5 h-56 overflow-hidden rounded-2xl border border-white/10 bg-linear-to-br from-slate-900 via-indigo-950 to-slate-950">
               <div
                 className="absolute inset-0 opacity-40"
                 style={{
@@ -196,7 +196,7 @@ function Contact() {
               >
                 <div className="relative">
                   <div className="absolute inset-0 -m-4 rounded-full bg-cyan-500/30 blur-xl animate-pulse" />
-                  <div className="relative grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 shadow-[0_10px_30px_-5px_rgba(6,182,212,0.6)]">
+                  <div className="relative grid h-12 w-12 place-items-center rounded-full bg-linear-to-br from-indigo-500 to-cyan-500 shadow-[0_10px_30px_-5px_rgba(6,182,212,0.6)]">
                     <MapPin className="h-6 w-6 text-white" />
                   </div>
                 </div>
@@ -334,7 +334,7 @@ function Contact() {
                 type="submit"
                 disabled={loading}
                 size="lg"
-                className="w-full rounded-full bg-gradient-to-r from-indigo-500 to-cyan-500 hover:from-indigo-400 hover:to-cyan-400 text-white font-semibold"
+                className="w-full rounded-full bg-linear-to-r from-indigo-500 to-cyan-500 hover:from-indigo-400 hover:to-cyan-400 text-white font-semibold"
               >
                 {loading ? (
                   <>

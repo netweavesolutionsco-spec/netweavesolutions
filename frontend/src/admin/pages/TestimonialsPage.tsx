@@ -15,7 +15,7 @@ export function TestimonialsPage() {
         title="Testimonials"
         description="Manage client testimonials shown on your website."
         actions={
-          <Button asChild size="sm" className="bg-gradient-to-r from-[var(--brand)] to-[var(--brand-3)] text-white">
+          <Button asChild size="sm" className="bg-linear-to-r from-[var(--brand)] to-[var(--brand-3)] text-white">
             <Link to="/admin/collections" search={{ tab: "testimonials" }}>
               <Plus className="mr-1.5 h-3.5 w-3.5" /> Edit Testimonials
             </Link>

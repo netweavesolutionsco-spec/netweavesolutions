@@ -51,7 +51,7 @@ export function CareersPage() {
         title="Careers"
         description="Open roles and job postings showcased on your public site."
         actions={
-          <Button asChild size="sm" className="bg-gradient-to-r from-[var(--brand)] to-[var(--brand-3)] text-white">
+          <Button asChild size="sm" className="bg-linear-to-r from-[var(--brand)] to-[var(--brand-3)] text-white">
             <Link to="/admin/collections" search={{ tab: "jobs" }}>
               <Plus className="mr-1.5 h-3.5 w-3.5" /> Edit Careers
             </Link>

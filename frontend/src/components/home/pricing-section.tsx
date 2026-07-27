@@ -50,7 +50,7 @@ export function PricingSection({ compact = false }: { compact?: boolean }) {
               {billing === mode && (
                 <motion.span
                   layoutId="billing-pill"
-                  className="absolute inset-0 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600"
+                  className="absolute inset-0 rounded-full bg-linear-to-r from-indigo-600 to-violet-600"
                   transition={{ type: "spring", stiffness: 400, damping: 32 }}
                 />
               )}
@@ -84,7 +84,7 @@ export function PricingSection({ compact = false }: { compact?: boolean }) {
               {p.featured && (
                 <>
                   <div className="pointer-events-none absolute inset-0 rounded-2xl bg-gradient-to-b from-primary/10 via-transparent to-transparent" />
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-indigo-500 to-cyan-400 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg">
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-linear-to-r from-indigo-500 to-cyan-400 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white shadow-lg">
                     Most Popular
                   </div>
                 </>
@@ -111,7 +111,7 @@ export function PricingSection({ compact = false }: { compact?: boolean }) {
                   className={cn(
                     "mt-8 inline-flex w-full items-center justify-center rounded-xl px-5 py-3 text-sm font-semibold transition-all",
                     p.featured
-                      ? "bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 text-white shadow-[0_10px_30px_-10px_rgba(79,70,229,0.75)] hover:shadow-[0_14px_38px_-10px_rgba(79,70,229,0.9)]"
+                      ? "bg-linear-to-r from-indigo-600 via-indigo-500 to-cyan-500 text-white shadow-[0_10px_30px_-10px_rgba(79,70,229,0.75)] hover:shadow-[0_14px_38px_-10px_rgba(79,70,229,0.9)]"
                       : "bg-secondary text-foreground hover:bg-secondary/80 border border-border",
                   )}
                 >

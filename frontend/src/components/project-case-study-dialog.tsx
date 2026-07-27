@@ -33,7 +33,7 @@ export function ProjectCaseStudyDialog({
               height={400}
             />
           ) : (
-            <div className={`h-full w-full bg-gradient-to-br ${p.gradient}`} />
+            <div className={`h-full w-full bg-linear-to-br ${p.gradient}`} />
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-[#0b1220] via-[#0b1220]/40 to-transparent" />
           <div className="absolute bottom-4 left-6 right-6 flex items-end justify-between gap-4">
@@ -164,7 +164,7 @@ export function ProjectCaseStudyDialog({
             <div className="pt-2">
               <Button
                 asChild
-                className="rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white hover:from-indigo-400 hover:to-violet-400"
+                className="rounded-full bg-linear-to-r from-indigo-500 to-violet-500 text-white hover:from-indigo-400 hover:to-violet-400"
               >
                 <a href={p.liveUrl} target="_blank" rel="noopener noreferrer">
                   Visit Live Website <ExternalLink className="h-3.5 w-3.5" />

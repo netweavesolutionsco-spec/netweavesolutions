@@ -16,7 +16,7 @@ const map: Record<string, string> = {
   Closed: "bg-muted text-muted-foreground border-border",
   Invited: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
   Suspended: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
-  Owner: "bg-gradient-to-r from-[var(--brand)] to-[var(--brand-3)] text-white border-transparent",
+  Owner: "bg-linear-to-r from-[var(--brand)] to-[var(--brand-3)] text-white border-transparent",
   Admin: "bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20",
   Editor: "bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20",
   Viewer: "bg-muted text-muted-foreground border-border",
