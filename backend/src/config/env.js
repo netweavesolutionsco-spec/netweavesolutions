@@ -13,7 +13,7 @@ const requiredEnv = (keys) => {
   return value;
 };
 
-const origins = (process.env.FRONTEND_ORIGIN || "http://localhost:8080")
+const origins = (process.env.FRONTEND_ORIGIN || "https://netlite.tech,https://netweavesolutions.tech")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
