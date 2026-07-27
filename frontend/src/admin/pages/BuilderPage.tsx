@@ -496,7 +496,7 @@ export function BuilderPage() {
             </Button>
             <Button
               size="sm"
-              className="bg-gradient-to-r from-indigo-500 to-cyan-500 text-white"
+              className="bg-linear-to-r from-indigo-500 to-cyan-500 text-white"
               onClick={() => {
                 setStatus("published");
                 toast.success("Published live");
@@ -680,7 +680,7 @@ export function BuilderPage() {
 
           <div className="relative flex-1 overflow-auto p-4">
             {showVersions && (
-              <div className="absolute right-4 top-4 z-10 w-72 rounded-xl border bg-card p-3 shadow-xl">
+              <div className="absolute right-4 top-4 z-10 w-72 max-w-[min(18rem,calc(100vw-2rem))] rounded-xl border bg-card p-3 shadow-xl">
                 <div className="mb-2 flex items-center justify-between">
                   <div className="text-sm font-semibold">Version History</div>
                   <button

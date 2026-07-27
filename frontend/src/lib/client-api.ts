@@ -45,7 +45,19 @@ async function raw(path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   if (init.body && !headers.has("content-type")) headers.set("content-type", "application/json");
   if (accessToken) headers.set("authorization", `Bearer ${accessToken}`);
-  return fetch(`${API_URL}${path}`, { ...init, headers, credentials: "include" });
+
+  try {
+    return await fetch(`${API_URL}${path}`, { ...init, headers, credentials: "include" });
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new ApiError(
+        0,
+        `Unable to reach backend API at ${API_URL}${path}. Check that VITE_CLIENT_API_URL is set to your deployed API and that the backend is running. (${error.message})`,
+        null,
+      );
+    }
+    throw error;
+  }
 }
 
 async function parse(res: Response) {

@@ -103,7 +103,7 @@ export function AdminTopbar() {
             <DropdownMenuTrigger asChild>
               <Button
                 size="sm"
-                className="hidden gap-1.5 rounded-xl bg-gradient-to-r from-[var(--brand)] to-[var(--brand-3)] text-white shadow-md hover:opacity-95 sm:inline-flex"
+                className="hidden gap-1.5 rounded-xl bg-linear-to-r from-(--brand) to-(--brand-3) text-white shadow-md hover:opacity-95 sm:inline-flex"
               >
                 <Plus className="h-4 w-4" /> Create
               </Button>
@@ -157,7 +157,7 @@ export function AdminTopbar() {
           >
             <Bell className="h-4 w-4" />
             {unreadCount > 0 && (
-              <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--brand)] px-1 text-[10px] font-semibold text-white">
+              <span className="absolute right-1 top-1 grid h-4 min-w-4 place-items-center rounded-full bg-(--brand) px-1 text-[10px] font-semibold text-white">
                 {unreadCount}
               </span>
             )}

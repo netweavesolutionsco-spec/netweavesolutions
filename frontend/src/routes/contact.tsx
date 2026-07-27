@@ -123,7 +123,7 @@ function Contact() {
 
               <div className="mt-6 space-y-4">
                 <a
-                  href={`mailto:netweavesolutions.co@gamil.com`}
+                  href={`mailto:netweavesolutions.co@gmail.com`}
                   className="flex items-start gap-3 group"
                 >
                   <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 border border-white/15">
@@ -132,18 +132,18 @@ function Contact() {
                   <div className="text-sm">
                     <div className="text-white/60 text-xs">Direct Email</div>
                     <div className="text-white group-hover:text-cyan-200 transition-colors">
-                      netweavesolutions.co@gamil.com
+                      netweavesolutions.co@gmail.com
                     </div>
                   </div>
                 </a>
-                <a href={`tel:+919876543210`} className="flex items-start gap-3 group">
+                <a href={`tel:+918434554873`} className="flex items-start gap-3 group">
                   <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 border border-white/15">
                     <Phone className="h-4 w-4 text-cyan-300" />
                   </div>
                   <div className="text-sm">
                     <div className="text-white/60 text-xs">Phone / WhatsApp</div>
                     <div className="text-white group-hover:text-cyan-200 transition-colors">
-                      +91 98765 43210
+                      +91 84345 54873
                     </div>
                   </div>
                 </a>

@@ -1,6 +1,5 @@
 import bcrypt from "bcryptjs";
 import { z } from "zod";
-import { Client } from "../models/Client.js";
 import { env } from "../config/env.js";
 import {
   signAccessToken,
@@ -13,6 +12,16 @@ import {
   REFRESH_COOKIE,
 } from "../utils/tokens.js";
 import { sendMail, emailTemplates } from "../utils/mailer.js";
+import {
+  createClient,
+  findClientByEmail,
+  findClientById,
+  findClientByVerifyToken,
+  findClientByResetToken,
+  findClientByOtpCode,
+  updateClient,
+  toSafeClient,
+} from "../services/clientService.js";
 
 // --- Schemas ---
 export const registerSchema = z
@@ -52,9 +61,10 @@ export const otpSchema = z.object({ otp: z.string().length(6) });
 // --- Helpers ---
 async function issueSession(res, client) {
   const jti = newJti();
-  client.refreshTokenJti = jti;
-  client.lastLoginAt = new Date();
-  await client.save();
+  await updateClient(client.id, {
+    refreshTokenJti: jti,
+    lastLoginAt: new Date(),
+  });
   const accessToken = signAccessToken(client);
   const refreshToken = signRefreshToken(client, jti);
   res.cookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions());
@@ -65,13 +75,13 @@ async function issueSession(res, client) {
 export async function register(req, res) {
   const { fullName, email, phone, companyName, country, password, referralCode } = req.body;
 
-  const existing = await Client.findOne({ email });
+  const existing = await findClientByEmail(email);
   if (existing) return res.status(409).json({ error: "Email already registered" });
 
   const passwordHash = await bcrypt.hash(password, 12);
   const approvalToken = newOpaqueToken();
   const approvalExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
-  const client = await Client.create({
+  const client = await createClient({
     fullName,
     email,
     phone,
@@ -83,6 +93,7 @@ export async function register(req, res) {
     emailVerified: false,
     emailVerifyToken: approvalToken,
     emailVerifyExpires: approvalExpires,
+    status: "active",
   });
 
   const approvalLink = `${env.FRONTEND_PRIMARY}/client/verify-email?token=${approvalToken}`;
@@ -92,13 +103,13 @@ export async function register(req, res) {
   return res.status(201).json({
     ok: true,
     message: "Account created successfully. Please wait for the company to approve your account.",
-    client: client.toSafeJSON(),
+    client: toSafeClient(client),
   });
 }
 
 export async function login(req, res) {
   const { email, password } = req.body;
-  const client = await Client.findOne({ email });
+  const client = await findClientByEmail(email);
   if (!client) return res.status(401).json({ error: "Invalid credentials" });
   if (client.status !== "active") return res.status(403).json({ error: "Account suspended" });
   if (!client.emailVerified) {
@@ -107,9 +118,8 @@ export async function login(req, res) {
   const ok = await bcrypt.compare(password, client.passwordHash);
   if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
-  client.lastLoginIp = req.ip;
   const accessToken = await issueSession(res, client);
-  return res.json({ ok: true, accessToken, client: client.toSafeJSON() });
+  return res.json({ ok: true, accessToken, client: toSafeClient(client) });
 }
 
 export async function logout(req, res) {
@@ -117,7 +127,7 @@ export async function logout(req, res) {
   if (rt) {
     try {
       const payload = verifyRefresh(rt);
-      await Client.updateOne({ _id: payload.sub }, { $unset: { refreshTokenJti: 1 } });
+      await updateClient(payload.sub, { refreshTokenJti: null });
     } catch {}
   }
   res.clearCookie(REFRESH_COOKIE, { ...refreshCookieOptions(), maxAge: 0 });
@@ -133,41 +143,42 @@ export async function refresh(req, res) {
   } catch {
     return res.status(401).json({ error: "Invalid refresh token" });
   }
-  const client = await Client.findById(payload.sub);
+  const client = await findClientById(payload.sub);
   if (!client || client.refreshTokenJti !== payload.jti || client.status !== "active") {
     return res.status(401).json({ error: "Session revoked" });
   }
   const accessToken = await issueSession(res, client);
-  return res.json({ ok: true, accessToken, client: client.toSafeJSON() });
+  return res.json({ ok: true, accessToken, client: toSafeClient(client) });
 }
 
 export async function me(req, res) {
-  return res.json({ client: req.client.toSafeJSON() });
+  return res.json({ client: toSafeClient(req.client) });
 }
 
 export async function verifyEmail(req, res) {
   const { token } = req.body;
-  const client = await Client.findOne({
-    emailVerifyToken: token,
-    emailVerifyExpires: { $gt: new Date() },
+  const client = await findClientByVerifyToken(token);
+  if (!client || !client.emailVerifyExpires || client.emailVerifyExpires < new Date()) {
+    return res.status(400).json({ error: "Invalid or expired token" });
+  }
+  await updateClient(client.id, {
+    emailVerified: true,
+    emailVerifyToken: null,
+    emailVerifyExpires: null,
   });
-  if (!client) return res.status(400).json({ error: "Invalid or expired token" });
-  client.emailVerified = true;
-  client.emailVerifyToken = undefined;
-  client.emailVerifyExpires = undefined;
-  await client.save();
   return res.json({ ok: true });
 }
 
 export async function forgotPassword(req, res) {
   const { email } = req.body;
-  const client = await Client.findOne({ email });
-  // Always return ok to avoid user enumeration
+  const client = await findClientByEmail(email);
   if (client) {
     const token = newOpaqueToken();
-    client.passwordResetToken = token;
-    client.passwordResetExpires = new Date(Date.now() + 60 * 60 * 1000);
-    await client.save();
+    const expires = new Date(Date.now() + 60 * 60 * 1000);
+    await updateClient(client.id, {
+      passwordResetToken: token,
+      passwordResetExpires: expires,
+    });
     const link = `${env.FRONTEND_PRIMARY}/client/reset-password?token=${token}`;
     const tpl = emailTemplates.resetPassword(client.fullName, link);
     sendMail({ to: email, ...tpl }).catch((e) => console.error("[mail]", e));
@@ -177,33 +188,38 @@ export async function forgotPassword(req, res) {
 
 export async function resetPassword(req, res) {
   const { token, password } = req.body;
-  const client = await Client.findOne({
-    passwordResetToken: token,
-    passwordResetExpires: { $gt: new Date() },
+  const client = await findClientByResetToken(token);
+  if (!client || !client.passwordResetExpires || client.passwordResetExpires < new Date()) {
+    return res.status(400).json({ error: "Invalid or expired token" });
+  }
+  const passwordHash = await bcrypt.hash(password, 12);
+  await updateClient(client.id, {
+    passwordHash,
+    passwordResetToken: null,
+    passwordResetExpires: null,
+    refreshTokenJti: null,
   });
-  if (!client) return res.status(400).json({ error: "Invalid or expired token" });
-  client.passwordHash = await bcrypt.hash(password, 12);
-  client.passwordResetToken = undefined;
-  client.passwordResetExpires = undefined;
-  client.refreshTokenJti = undefined; // invalidate other sessions
-  await client.save();
   return res.json({ ok: true });
 }
 
 export async function changePassword(req, res) {
   const { currentPassword, newPassword } = req.body;
+  if (!req.client) return res.status(401).json({ error: "Client not found" });
   const ok = await bcrypt.compare(currentPassword, req.client.passwordHash);
   if (!ok) return res.status(400).json({ error: "Current password is incorrect" });
-  req.client.passwordHash = await bcrypt.hash(newPassword, 12);
-  await req.client.save();
-  return res.json({ ok: true });
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+  const client = await updateClient(req.client.id, { passwordHash });
+  return res.json({ ok: true, client: toSafeClient(client) });
 }
 
 export async function sendOtp(req, res) {
+  if (!req.client) return res.status(401).json({ error: "Client not found" });
   const code = newOtp();
-  req.client.otpCode = code;
-  req.client.otpExpires = new Date(Date.now() + 10 * 60 * 1000);
-  await req.client.save();
+  const expires = new Date(Date.now() + 10 * 60 * 1000);
+  await updateClient(req.client.id, {
+    otpCode: code,
+    otpExpires: expires,
+  });
   const tpl = emailTemplates.otp(req.client.fullName, code);
   sendMail({ to: req.client.email, ...tpl }).catch((e) => console.error("[mail]", e));
   return res.json({ ok: true });
@@ -211,6 +227,7 @@ export async function sendOtp(req, res) {
 
 export async function verifyOtp(req, res) {
   const { otp } = req.body;
+  if (!req.client) return res.status(401).json({ error: "Client not found" });
   if (
     !req.client.otpCode ||
     !req.client.otpExpires ||
@@ -219,8 +236,9 @@ export async function verifyOtp(req, res) {
   ) {
     return res.status(400).json({ error: "Invalid or expired code" });
   }
-  req.client.otpCode = undefined;
-  req.client.otpExpires = undefined;
-  await req.client.save();
+  await updateClient(req.client.id, {
+    otpCode: null,
+    otpExpires: null,
+  });
   return res.json({ ok: true });
 }

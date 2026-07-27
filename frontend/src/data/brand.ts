@@ -5,8 +5,8 @@ export const brand = {
   description:
     "Premium software development agency crafting websites, apps and custom software that scale.",
   email: "netweavesolutions.co@gmail.com",
-  phone: "+91-9876543210",
-  whatsapp: "919876543210",
+  phone: "+918434554873",
+  whatsapp: "918434554873",
   address: "India",
   social: {
     twitter: "https://twitter.com",

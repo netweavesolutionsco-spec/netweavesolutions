@@ -12,7 +12,8 @@ const origins = (process.env.FRONTEND_ORIGIN || "http://localhost:8080")
 export const env = {
   NODE_ENV: process.env.NODE_ENV || "development",
   PORT: Number(process.env.PORT || 4000),
-  MONGODB_URI: required("MONGODB_URI"),
+  SUPABASE_URL: required("SUPABASE_URL"),
+  SUPABASE_SERVICE_ROLE_KEY: required("SUPABASE_SERVICE_ROLE_KEY"),
   JWT_ACCESS_SECRET: required("JWT_ACCESS_SECRET"),
   JWT_REFRESH_SECRET: required("JWT_REFRESH_SECRET"),
   JWT_ACCESS_TTL: process.env.JWT_ACCESS_TTL || "15m",

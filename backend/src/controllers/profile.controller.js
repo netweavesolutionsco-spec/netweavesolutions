@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { updateClient, toSafeClient } from "../services/clientService.js";
 
 export const profileUpdateSchema = z.object({
   fullName: z.string().trim().min(2).max(100).optional(),
@@ -19,11 +20,10 @@ export const profileUpdateSchema = z.object({
 });
 
 export async function getProfile(req, res) {
-  return res.json({ client: req.client.toSafeJSON() });
+  return res.json({ client: toSafeClient(req.client) });
 }
 
 export async function updateProfile(req, res) {
-  Object.assign(req.client, req.body);
-  await req.client.save();
-  return res.json({ ok: true, client: req.client.toSafeJSON() });
+  const updatedClient = await updateClient(req.client.id, req.body);
+  return res.json({ ok: true, client: toSafeClient(updatedClient) });
 }

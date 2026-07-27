@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { Mail, Phone, MapPin } from "lucide-react";
 import { LogoMark } from "./logo";
-import { GithubIcon, LinkedinIcon, TwitterIcon, InstagramIcon } from "./social-icons";
+import { InstagramIcon, WhatsAppIcon } from "./social-icons";
 
 export function Footer() {
   const settings = useSiteSettings();
@@ -11,7 +11,7 @@ export function Footer() {
   return (
     <footer className="mt-32 border-t border-border">
       <div className="mx-auto max-w-7xl px-6 py-16">
-        <div className="grid gap-12 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-12 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-4">
           <div>
             <Link to="/" aria-label={brand.name}>
               <LogoMark />
@@ -21,9 +21,11 @@ export function Footer() {
             </p>
             <div className="mt-6 flex gap-2">
               {[
-                { icon: TwitterIcon, href: brand.social.twitter, label: "Twitter" },
-                { icon: LinkedinIcon, href: brand.social.linkedin, label: "LinkedIn" },
-                { icon: GithubIcon, href: brand.social.github, label: "GitHub" },
+                {
+                  icon: WhatsAppIcon,
+                  href: `https://wa.me/${brand.whatsapp}`,
+                  label: "WhatsApp",
+                },
                 { icon: InstagramIcon, href: brand.social.instagram, label: "Instagram" },
               ].map(({ icon: Icon, href, label }) => (
                 <a

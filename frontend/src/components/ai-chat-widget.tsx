@@ -119,7 +119,7 @@ export function AIChatWidget() {
             style={{
               bottom: "10.5rem",
               width: "min(384px, calc(100vw - 2rem))",
-              height: "480px",
+              height: "min(85vh, 480px)",
               background: "color-mix(in oklab, var(--card) 85%, transparent)",
               boxShadow:
                 "0 30px 60px -20px rgba(0,0,0,0.5), 0 0 0 1px color-mix(in oklab, oklch(0.72 0.13 210) 15%, transparent)",
@@ -133,7 +133,7 @@ export function AIChatWidget() {
               }}
             >
               <div className="relative">
-                <div className="grid h-10 w-10 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 ring-2 ring-cyan-400/60">
+                <div className="grid h-10 w-10 place-items-center rounded-full bg-linear-to-br from-indigo-500 to-cyan-500 ring-2 ring-cyan-400/60">
                   <Bot className="h-5 w-5 text-white" />
                 </div>
                 <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-400 ring-2 ring-slate-900" />
@@ -170,7 +170,7 @@ export function AIChatWidget() {
               ))}
               {loading && (
                 <div className="flex items-start gap-2">
-                  <div className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 shrink-0">
+                  <div className="grid h-7 w-7 place-items-center rounded-full bg-linear-to-br from-indigo-500 to-cyan-500 shrink-0">
                     <Bot className="h-4 w-4 text-white animate-spin-slow" />
                   </div>
                   <div className="rounded-2xl rounded-tl-sm border border-border bg-card px-3 py-2 text-sm text-muted-foreground">
@@ -231,7 +231,7 @@ export function AIChatWidget() {
                     "grid h-8 w-8 place-items-center rounded-lg text-white transition",
                     !input.trim() || loading
                       ? "bg-muted-foreground/40 cursor-not-allowed"
-                      : "bg-gradient-to-br from-indigo-600 to-cyan-500 hover:shadow-glow hover:scale-105",
+                      : "bg-linear-to-br from-indigo-600 to-cyan-500 hover:shadow-glow hover:scale-105",
                   )}
                   aria-label="Send"
                 >
@@ -255,7 +255,7 @@ function MessageBubble({ m }: { m: Msg }) {
           "grid h-7 w-7 shrink-0 place-items-center rounded-full",
           isUser
             ? "bg-indigo-600 text-white"
-            : "bg-gradient-to-br from-indigo-500 to-cyan-500 text-white",
+            : "bg-linear-to-br from-indigo-500 to-cyan-500 text-white",
         )}
       >
         {isUser ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
@@ -271,7 +271,7 @@ function MessageBubble({ m }: { m: Msg }) {
         <div
           className={cn(
             "prose prose-sm max-w-none",
-            isUser ? "text-white [&_*]:text-white [&_a]:underline" : "dark:prose-invert",
+            isUser ? "text-white **:text-white [&_a]:underline" : "dark:prose-invert",
           )}
         >
           <ReactMarkdown>{m.content}</ReactMarkdown>

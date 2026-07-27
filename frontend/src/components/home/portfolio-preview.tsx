@@ -26,7 +26,7 @@ export function PortfolioPreview() {
             className="group"
           >
             <div className="relative overflow-hidden rounded-xl border border-border bg-muted">
-              <div className={cn("relative aspect-[16/10] bg-gradient-to-br", p.gradient)}>
+              <div className={cn("relative aspect-16/10 bg-linear-to-br", p.gradient)}>
                 <div
                   className="absolute inset-0 mix-blend-overlay opacity-40"
                   style={{

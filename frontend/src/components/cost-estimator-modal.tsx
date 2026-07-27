@@ -251,7 +251,7 @@ export function CostEstimatorModal() {
                   initial={{ scale: 0.98, opacity: 0.7 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ duration: 0.2 }}
-                  className="rounded-2xl border border-primary/40 bg-gradient-to-br from-primary/20 via-slate-900 to-cyan-500/10 p-5"
+                  className="rounded-2xl border border-primary/40 bg-linear-to-br from-primary/20 via-slate-900 to-cyan-500/10 p-5"
                 >
                   <div className="flex items-center gap-2 text-[11px] uppercase tracking-widest text-cyan-300">
                     <Sparkles className="h-3.5 w-3.5" /> Live Estimate
@@ -318,7 +318,7 @@ export function CostEstimatorModal() {
                 <Button
                   onClick={submit}
                   disabled={submitting}
-                  className="w-full h-11 rounded-xl text-sm font-semibold bg-gradient-to-r from-indigo-600 via-primary to-cyan-500 hover:opacity-95 text-white border-0 shadow-[0_10px_30px_-10px_rgba(79,70,229,0.7)]"
+                  className="w-full h-11 rounded-xl text-sm font-semibold bg-linear-to-r from-indigo-600 via-primary to-cyan-500 hover:opacity-95 text-white border-0 shadow-[0_10px_30px_-10px_rgba(79,70,229,0.7)]"
                 >
                   {submitting ? (
                     <>
@@ -362,7 +362,7 @@ export function CostEstimatorModal() {
 
               <Button
                 onClick={close}
-                className="mt-6 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-500 text-white border-0"
+                className="mt-6 rounded-xl bg-linear-to-r from-indigo-600 to-cyan-500 text-white border-0"
               >
                 Done
               </Button>

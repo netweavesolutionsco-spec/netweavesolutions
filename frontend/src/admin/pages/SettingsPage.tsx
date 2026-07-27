@@ -53,11 +53,11 @@ export function SettingsPage() {
                   className={cn(
                     "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors",
                     active
-                      ? "bg-gradient-to-r from-[color-mix(in_oklab,var(--brand)_18%,transparent)] to-transparent font-medium text-foreground"
+                      ? "bg-linear-to-r from-[color-mix(in_oklab,var(--brand)_18%,transparent)] to-transparent font-medium text-foreground"
                       : "text-muted-foreground hover:bg-accent hover:text-foreground",
                   )}
                 >
-                  <Icon className={cn("h-4 w-4", active && "text-[var(--brand)]")} />
+                  <Icon className={cn("h-4 w-4", active && "text-(--brand)")} />
                   {t.label}
                 </button>
               );
@@ -77,7 +77,7 @@ export function SettingsPage() {
           {tab === "api" && <ApiSettings />}
           {tab === "storage" && <StorageSettings />}
           <div className="mt-6 flex justify-end">
-            <Button className="bg-gradient-to-r from-[var(--brand)] to-[var(--brand-3)] text-white">
+            <Button className="bg-linear-to-r from-(--brand) to-(--brand-3) text-white">
               <Save className="mr-1.5 h-3.5 w-3.5" /> Save Changes
             </Button>
           </div>
@@ -135,7 +135,7 @@ function GeneralSettings() {
         <Input defaultValue="Transforming Ideas Into Powerful Digital Solutions" />
       </Row>
       <Row label="Contact Email">
-        <Input defaultValue="netweavesolutions.co@gamil.com" />
+        <Input defaultValue="netweavesolutions.co@gmail.com" />
       </Row>
       <Row label="Timezone">
         <Input defaultValue="Asia/Kolkata" />
@@ -224,7 +224,7 @@ function EmailSettings() {
         <Input type="number" defaultValue={587} />
       </Row>
       <Row label="From Address">
-        <Input defaultValue="netweavesolutions.co@gamil.com" />
+        <Input defaultValue="netweavesolutions.co@gmail.com" />
       </Row>
     </Section>
   );

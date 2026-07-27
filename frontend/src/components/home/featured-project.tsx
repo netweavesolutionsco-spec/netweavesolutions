@@ -83,7 +83,7 @@ export function FeaturedProject() {
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" /> HTTPS /
                 LIVE
               </span>
-              <span className="text-xs text-white/70 truncate max-w-[280px]">
+              <span className="text-xs text-white/70 truncate max-w-70">
                 {featured.liveUrl}
               </span>
             </div>
@@ -116,7 +116,7 @@ export function FeaturedProject() {
                 {featured.stats?.map((s) => (
                   <div
                     key={s.label}
-                    className="rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3"
+                    className="rounded-xl border border-white/10 bg-white/3 px-4 py-3"
                   >
                     <div className="text-[10px] font-semibold uppercase tracking-wider text-white/50">
                       {s.label}
@@ -129,7 +129,7 @@ export function FeaturedProject() {
               <div className="mt-7 flex flex-wrap gap-3">
                 <Button
                   asChild
-                  className="rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-500/30 hover:from-indigo-400 hover:to-violet-400"
+                  className="rounded-full bg-linear-to-r from-indigo-500 to-violet-500 text-white shadow-lg shadow-indigo-500/30 hover:from-indigo-400 hover:to-violet-400"
                 >
                   <a href={featured.liveUrl} target="_blank" rel="noopener noreferrer">
                     Launch {featured.title.split(" ")[0]} Website{" "}
@@ -147,7 +147,7 @@ export function FeaturedProject() {
             </div>
 
             {/* Right browser mock */}
-            <div className="p-4 md:p-6 bg-gradient-to-br from-slate-950/50 to-slate-900/50 border-t lg:border-t-0 lg:border-l border-white/10">
+            <div className="p-4 md:p-6 bg-linear-to-br from-slate-950/50 to-slate-900/50 border-t lg:border-t-0 lg:border-l border-white/10">
               <div className="rounded-2xl overflow-hidden border border-white/10 bg-black/40">
                 <div className="flex items-center gap-3 px-4 py-2.5 border-b border-white/10 bg-black/40">
                   <div className="flex items-center gap-1">
@@ -193,7 +193,7 @@ export function FeaturedProject() {
                 <div
                   className={cn(
                     "relative bg-white transition-all duration-500",
-                    device === "mobile" ? "max-w-[390px] mx-auto" : "w-full",
+                    device === "mobile" ? "max-w-97.5 mx-auto" : "w-full",
                   )}
                 >
                   {/* Notice bar */}
@@ -208,7 +208,7 @@ export function FeaturedProject() {
                     </span>
                     <Bell className="ml-auto h-3.5 w-3.5 shrink-0" />
                   </div>
-                  <div className="relative h-[520px] overflow-hidden bg-slate-950">
+                  <div className="relative h-130 overflow-hidden bg-slate-950">
                     <iframe
                       src={localFeatured.liveUrl}
                       title={`${featured.title} live website preview`}
@@ -219,7 +219,7 @@ export function FeaturedProject() {
                       style={iframeStyle}
                       loading="lazy"
                     />
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-slate-950/85 via-slate-950/25 to-transparent px-4 py-3">
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-slate-950/85 via-slate-950/25 to-transparent px-4 py-3">
                       <div className="flex items-center justify-between text-[11px] text-white/70">
                         <span>Scroll inside to browse the live site</span>
                         <span>{device === "mobile" ? "Mobile" : device === "laptop" ? "Laptop" : "Desktop"} preview</span>

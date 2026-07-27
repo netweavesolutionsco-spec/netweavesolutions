@@ -2,7 +2,7 @@
   "name": "codenest-client-api",
   "version": "1.0.0",
   "private": true,
-  "description": "Netweavesolutions — Client Portal API (Express + Mongoose + JWT).",
+  "description": "Netweavesolutions — Client Portal API (Express + Supabase + JWT).",
   "main": "src/index.js",
   "type": "module",
   "scripts": {
@@ -13,6 +13,7 @@
     "node": ">=20"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.110.8",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
     "cors": "^2.8.5",
@@ -21,7 +22,6 @@
     "express-rate-limit": "^7.4.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.5.2",
     "nodemailer": "^6.9.14",
     "zod": "^3.23.8"
   }

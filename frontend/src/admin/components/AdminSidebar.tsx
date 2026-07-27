@@ -92,7 +92,7 @@ export function AdminSidebar() {
           sidebarCollapsed && "justify-center px-2",
         )}
       >
-        <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-[var(--brand)] via-[var(--brand-3)] to-[var(--brand-2)] text-white shadow-lg">
+        <div className="grid h-9 w-9 place-items-center rounded-xl bg-linear-to-br from-(--brand) via-(--brand-3) to-(--brand-2) text-white shadow-lg">
           <Sparkles className="h-5 w-5" />
         </div>
         {!sidebarCollapsed && (
@@ -141,16 +141,16 @@ export function AdminSidebar() {
                       className={cn(
                         "group flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all",
                         active
-                          ? "bg-gradient-to-r from-[color-mix(in_oklab,var(--brand)_18%,transparent)] to-transparent text-foreground shadow-sm"
+                          ? "bg-linear-to-r from-[color-mix(in_oklab,var(--brand)_18%,transparent)] to-transparent text-foreground shadow-sm"
                           : "text-muted-foreground hover:bg-accent hover:text-foreground",
                         sidebarCollapsed && "justify-center px-2",
                       )}
                       title={sidebarCollapsed ? item.label : undefined}
                     >
-                      <Icon className={cn("h-4 w-4 shrink-0", active && "text-[var(--brand)]")} />
+                      <Icon className={cn("h-4 w-4 shrink-0", active && "text-(--brand)")} />
                       {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
                       {!sidebarCollapsed && active && (
-                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[var(--brand)]" />
+                        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-(--brand)" />
                       )}
                     </Link>
                   </li>
@@ -183,7 +183,7 @@ export function AdminSidebar() {
       <aside
         className={cn(
           "hidden shrink-0 border-r border-border/60 bg-card/60 backdrop-blur-xl transition-[width] duration-300 lg:block",
-          sidebarCollapsed ? "w-[76px]" : "w-64",
+          sidebarCollapsed ? "w-19" : "w-64",
         )}
       >
         <div className="sticky top-0 h-screen">{content}</div>
@@ -205,7 +205,7 @@ export function AdminSidebar() {
         />
         <aside
           className={cn(
-            "absolute left-0 top-0 h-full w-72 border-r border-border/60 bg-card shadow-2xl transition-transform",
+            "absolute left-0 top-0 h-full w-72 max-w-[90vw] border-r border-border/60 bg-card shadow-2xl transition-transform",
             mobileOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >

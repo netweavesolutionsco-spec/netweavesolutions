@@ -1,24 +1,23 @@
 # Netweavesolutions Client API
 
-Standalone Node.js service (Express + Mongoose + JWT) powering the Client Portal
-of the Netweavesolutions website. The Lovable frontend cannot run MongoDB
-directly (it deploys to Cloudflare Workers, which has no TCP), so this service
-lives outside Lovable and is called over HTTPS.
+Standalone Node.js service (Express + Supabase + JWT) powering the Client Portal
+of the Netweavesolutions website. This backend is now Supabase-based and is
+called over HTTPS from the Lovable frontend.
 
 ## Stack
 
 - Express 4 + Helmet + CORS + express-rate-limit
-- Mongoose 8 (MongoDB Atlas recommended)
+- Supabase service role client for persistence
 - JWT (access + refresh) with bcrypt-hashed passwords
 - Nodemailer for verification / OTP / password reset emails
 - Zod for input validation
-- MVC layout: `models/`, `controllers/`, `routes/`, `middleware/`, `utils/`
+- MVC layout: `services/`, `controllers/`, `routes/`, `middleware/`, `utils/`
 
 ## Local dev
 
 ```bash
 cd backend
-cp .env.example .env       # fill in MONGODB_URI + JWT secrets + SMTP
+cp .env.example .env       # fill in SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, JWT secrets, and SMTP
 npm install
 npm run dev
 # → API on http://localhost:4000
@@ -38,7 +37,8 @@ Lovable frontend project (Project Settings → Environment Variables), e.g.
 
 Use these exact names in Render for the backend service:
 
-- `MONGODB_URI`
+- `SUPABASE_URL`
+- `SUPABASE_SERVICE_ROLE_KEY`
 - `JWT_ACCESS_SECRET`
 - `JWT_REFRESH_SECRET`
 - `API_PUBLIC_URL=https://<your-backend-url>`

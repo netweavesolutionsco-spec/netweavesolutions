@@ -5,7 +5,6 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import rateLimit from "express-rate-limit";
 
-import { connectDB } from "./config/db.js";
 import { env } from "./config/env.js";
 import authRoutes from "./routes/auth.routes.js";
 import profileRoutes from "./routes/profile.routes.js";
@@ -43,8 +42,17 @@ app.use(notFound);
 app.use(errorHandler);
 
 const port = env.PORT;
-connectDB().then(() => {
-  app.listen(port, () => {
-    console.log(`[api] listening on :${port} (env=${env.NODE_ENV})`);
-  });
+process.on("uncaughtException", (err) => {
+  console.error("[startup] Uncaught exception:", err);
+  process.exit(1);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[startup] Unhandled rejection:", reason);
+  process.exit(1);
+});
+
+console.log(`[api] allowed CORS origins: ${JSON.stringify(env.FRONTEND_ORIGIN)}`);
+app.listen(port, () => {
+  console.log(`[api] listening on :${port} (env=${env.NODE_ENV})`);
+  console.log(`[api] server started successfully`);
 });

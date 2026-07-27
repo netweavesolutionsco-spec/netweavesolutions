@@ -44,7 +44,7 @@ export function Navbar() {
             <Logo />
           </Link>
 
-          <nav className="hidden lg:flex items-center gap-1">
+          <nav aria-label="Primary navigation" className="hidden lg:flex items-center gap-1">
             {navItems.map((n) => {
               const active = location.pathname === n.to;
               return (
@@ -112,6 +112,8 @@ export function Navbar() {
               className="lg:hidden"
               onClick={() => setOpen((o) => !o)}
               aria-label="Toggle menu"
+              aria-expanded={open}
+              aria-controls="mobile-menu"
             >
               {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </Button>
@@ -121,34 +123,40 @@ export function Navbar() {
         <AnimatePresence>
           {open && (
             <motion.div
+              id="mobile-menu"
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.15 }}
               className="lg:hidden pb-4"
             >
-              <div className="rounded-xl border border-border bg-card p-2">
-                {navItems.map((n) => (
+              <div
+                className="rounded-xl border border-border bg-card p-2 shadow-xl"
+                style={{ maxHeight: "calc(100vh - 6rem)" }}
+              >
+                <nav aria-label="Mobile navigation" className="space-y-1 overflow-y-auto">
+                  {navItems.map((n) => (
+                    <Link
+                      key={n.to}
+                      to={n.to}
+                      className="block rounded-md px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
+                    >
+                      {n.label}
+                    </Link>
+                  ))}
                   <Link
-                    key={n.to}
-                    to={n.to}
-                    className="block rounded-md px-3 py-2.5 text-sm font-medium text-foreground hover:bg-accent"
+                    to={clientUser ? "/client" : "/client/login"}
+                    className="block rounded-md px-3 py-2.5 text-sm font-medium text-primary hover:bg-accent"
                   >
-                    {n.label}
+                    {clientUser ? "Client Portal" : "Client Login"}
                   </Link>
-                ))}
-                <Link
-                  to={clientUser ? "/client" : "/client/login"}
-                  className="block rounded-md px-3 py-2.5 text-sm font-medium text-primary hover:bg-accent"
-                >
-                  {clientUser ? "Client Portal" : "Client Login"}
-                </Link>
-                <Link
-                  to="/admin"
-                  className="block rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent"
-                >
-                  Admin
-                </Link>
+                  <Link
+                    to="/admin"
+                    className="block rounded-md px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent"
+                  >
+                    Admin
+                  </Link>
+                </nav>
               </div>
             </motion.div>
           )}

@@ -29,7 +29,7 @@ export function PortfolioGrid() {
             transition={{ duration: 0.45, delay: (i % 3) * 0.06 }}
             className="group text-left flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0b1220]/70 backdrop-blur transition-all hover:-translate-y-1 hover:border-cyan-500/40 hover:shadow-[0_30px_80px_-30px_rgba(6,182,212,0.35)]"
           >
-            <div className="relative aspect-[16/10] overflow-hidden">
+            <div className="relative aspect-16/10 overflow-hidden">
               {p.image ? (
                 <img
                   src={p.image}
@@ -40,9 +40,9 @@ export function PortfolioGrid() {
                   className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"
                 />
               ) : (
-                <div className={`h-full w-full bg-gradient-to-br ${p.gradient}`} />
+                <div className={`h-full w-full bg-linear-to-br ${p.gradient}`} />
               )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent" />
               {p.isLive && (
                 <span className="absolute top-3 right-3 inline-flex items-center gap-1.5 rounded-full bg-emerald-500/90 backdrop-blur text-slate-950 text-[11px] font-bold px-2.5 py-1">
                   <span className="h-1.5 w-1.5 rounded-full bg-slate-950 animate-pulse" /> LIVE

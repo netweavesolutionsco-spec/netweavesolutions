@@ -45,9 +45,9 @@ export function Hero() {
         }}
       />
 
-      <div className="mx-auto max-w-7xl px-6 pt-0 pb-6 md:pt-1 md:pb-8 grid lg:grid-cols-2 gap-12 items-center">
+      <div className="mx-auto max-w-7xl px-6 pt-0 pb-6 md:pt-1 md:pb-8 grid gap-12 lg:grid-cols-2 items-center">
         {/* LEFT */}
-        <div>
+        <div className="max-w-3xl">
           <motion.div
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -66,7 +66,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.05 }}
-            className="text-5xl md:text-6xl xl:text-7xl font-semibold tracking-[-0.03em] leading-[1.02] text-foreground"
+            className="text-[clamp(2.8rem,4.5vw,4.6rem)] md:text-[clamp(3.4rem,4vw,5.6rem)] font-semibold tracking-[-0.03em] leading-[1.02] text-foreground"
           >
             {renderTitle(settings.hero.title)}
           </motion.h1>
@@ -75,7 +75,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.12 }}
-            className="mt-6 max-w-xl text-lg text-muted-foreground leading-relaxed"
+            className="mt-6 max-w-xl text-[clamp(1rem,2.2vw,1.15rem)] text-muted-foreground leading-relaxed"
           >
             {settings.hero.subtitle}
           </motion.p>
@@ -119,7 +119,7 @@ export function Hero() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.3 }}
-            className="mt-8 grid grid-cols-3 gap-4 max-w-lg"
+            className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3 max-w-lg"
           >
             {[
               { v: 150, s: "+", l: "Projects Delivered" },
@@ -170,7 +170,10 @@ export function Hero() {
 
           {/* Code window */}
           <div className="rounded-2xl border border-white/10 bg-[#0b1220] shadow-[0_40px_120px_-40px_rgba(79,70,229,0.5)] overflow-hidden">
-            <div className="flex items-center gap-3 border-b border-white/10 px-4 py-3 bg-white/[0.02]">
+            <div
+            className="flex items-center gap-3 border-b border-white/10 px-4 py-3"
+            style={{ backgroundColor: "rgba(255,255,255,0.02)" }}
+          >
               <div className="flex items-center gap-1.5">
                 <span className="h-3 w-3 rounded-full bg-red-500" />
                 <span className="h-3 w-3 rounded-full bg-amber-400" />
