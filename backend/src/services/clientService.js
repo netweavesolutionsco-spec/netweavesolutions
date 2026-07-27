@@ -133,45 +133,45 @@ export async function findClientByOtpCode(code) {
   return fetchClient({ otp_code: code });
 }
 
-export async function createClient(data) {
+export async function createClient(clientData) {
   const payload = cleanPayload({
-    email: data.email.toLowerCase().trim(),
-    password_hash: data.passwordHash,
-    email_verified: data.emailVerified ?? false,
-    email_verify_token: data.emailVerifyToken,
-    email_verify_expires: data.emailVerifyExpires,
-    otp_code: data.otpCode,
-    otp_expires: data.otpExpires,
-    password_reset_token: data.passwordResetToken,
-    password_reset_expires: data.passwordResetExpires,
-    refresh_token_jti: data.refreshTokenJti,
-    full_name: data.fullName,
-    phone: data.phone,
-    company_name: data.companyName,
-    country: data.country,
-    referral_code: data.referralCode,
-    accepted_terms: data.acceptedTerms,
-    profile_photo_url: data.profilePhotoUrl,
-    company_logo_url: data.companyLogoUrl,
-    industry: data.industry,
-    gst_number: data.gstNumber,
-    address: data.address,
-    city: data.city,
-    state: data.state,
-    pincode: data.pincode,
-    website: data.website,
-    linkedin: data.linkedin,
-    timezone: data.timezone,
-    last_login_at: data.lastLoginAt,
-    last_login_ip: data.lastLoginIp,
-    status: data.status ?? "active",
+    email: clientData.email.toLowerCase().trim(),
+    password_hash: clientData.passwordHash,
+    email_verified: clientData.emailVerified ?? false,
+    email_verify_token: clientData.emailVerifyToken,
+    email_verify_expires: clientData.emailVerifyExpires,
+    otp_code: clientData.otpCode,
+    otp_expires: clientData.otpExpires,
+    password_reset_token: clientData.passwordResetToken,
+    password_reset_expires: clientData.passwordResetExpires,
+    refresh_token_jti: clientData.refreshTokenJti,
+    full_name: clientData.fullName,
+    phone: clientData.phone,
+    company_name: clientData.companyName,
+    country: clientData.country,
+    referral_code: clientData.referralCode,
+    accepted_terms: clientData.acceptedTerms,
+    profile_photo_url: clientData.profilePhotoUrl,
+    company_logo_url: clientData.companyLogoUrl,
+    industry: clientData.industry,
+    gst_number: clientData.gstNumber,
+    address: clientData.address,
+    city: clientData.city,
+    state: clientData.state,
+    pincode: clientData.pincode,
+    website: clientData.website,
+    linkedin: clientData.linkedin,
+    timezone: clientData.timezone,
+    last_login_at: clientData.lastLoginAt,
+    last_login_ip: clientData.lastLoginIp,
+    status: clientData.status ?? "active",
   });
 
-  const { data, error } = await supabaseAdmin.from("client_accounts").insert(payload).select(CLIENT_COLUMNS).single();
+  const { data: createdClient, error } = await supabaseAdmin.from("client_accounts").insert(payload).select(CLIENT_COLUMNS).single();
   if (error) {
     throw error;
   }
-  return normalizeClientRecord(data);
+  return normalizeClientRecord(createdClient);
 }
 
 export async function updateClient(id, updates) {
