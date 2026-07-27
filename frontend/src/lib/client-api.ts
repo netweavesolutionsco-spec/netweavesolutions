@@ -8,15 +8,28 @@
 
 const DEFAULT_API_BASE_URL = "https://netweavesolutions.onrender.com";
 
-function normalizeApiBaseUrl(value?: string) {
+function normalizeApiBaseUrl(value?: string): string {
   const trimmed = value?.trim();
-  if (!trimmed) return DEFAULT_API_BASE_URL;
+  if (!trimmed) {
+    // Always fall back to production URL if env var is missing, empty, or whitespace
+    return DEFAULT_API_BASE_URL;
+  }
+  // Remove trailing slashes for consistency
   return trimmed.replace(/\/$/, "");
 }
 
-const API_URL = normalizeApiBaseUrl(import.meta.env.VITE_CLIENT_API_URL as string | undefined);
+// Resolve API URL with explicit fallback
+const resolvedEnvUrl = import.meta.env.VITE_CLIENT_API_URL as string | undefined;
+const API_URL: string = normalizeApiBaseUrl(resolvedEnvUrl) || DEFAULT_API_BASE_URL;
 
-export function getApiBaseUrl() {
+// Log the resolved API URL in development
+if (import.meta.env.DEV) {
+  console.debug(
+    `[client-api] Resolved API URL to: ${API_URL} (env: ${resolvedEnvUrl || "NOT SET"})`
+  );
+}
+
+export function getApiBaseUrl(): string {
   return API_URL;
 }
 
