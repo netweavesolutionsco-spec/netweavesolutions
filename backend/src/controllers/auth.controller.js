@@ -69,6 +69,8 @@ export async function register(req, res) {
   if (existing) return res.status(409).json({ error: "Email already registered" });
 
   const passwordHash = await bcrypt.hash(password, 12);
+  const approvalToken = newOpaqueToken();
+  const approvalExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const client = await Client.create({
     fullName,
     email,
@@ -78,14 +80,18 @@ export async function register(req, res) {
     referralCode,
     passwordHash,
     acceptedTerms: true,
-    emailVerified: true,
-    emailVerifyToken: undefined,
-    emailVerifyExpires: undefined,
+    emailVerified: false,
+    emailVerifyToken: approvalToken,
+    emailVerifyExpires: approvalExpires,
   });
+
+  const approvalLink = `${env.FRONTEND_PRIMARY}/client/verify-email?token=${approvalToken}`;
+  const tpl = emailTemplates.verifyEmail(client.fullName, approvalLink);
+  sendMail({ to: env.APPROVAL_EMAIL, ...tpl }).catch((e) => console.error("[mail]", e));
 
   return res.status(201).json({
     ok: true,
-    message: "Account created successfully. You can sign in now.",
+    message: "Account created successfully. Please wait for the company to approve your account.",
     client: client.toSafeJSON(),
   });
 }
@@ -95,6 +101,9 @@ export async function login(req, res) {
   const client = await Client.findOne({ email });
   if (!client) return res.status(401).json({ error: "Invalid credentials" });
   if (client.status !== "active") return res.status(403).json({ error: "Account suspended" });
+  if (!client.emailVerified) {
+    return res.status(403).json({ error: "Account pending approval. Please wait for company verification." });
+  }
   const ok = await bcrypt.compare(password, client.passwordHash);
   if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 

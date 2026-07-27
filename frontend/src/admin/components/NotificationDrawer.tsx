@@ -93,7 +93,7 @@ export function NotificationDrawer() {
                   <Inbox className="h-5 w-5 text-muted-foreground" />
                 </div>
                 <div className="text-sm font-medium">You're all caught up</div>
-                <div className="text-xs text-muted-foreground">New activity will appear here</div>
+                <div className="text-xs text-muted-foreground">No notifications yet.</div>
               </div>
             </div>
           ) : (
@@ -120,7 +120,7 @@ export function NotificationDrawer() {
                       <div className="flex items-center gap-2">
                         <p className="text-sm font-medium">{n.title}</p>
                         {!n.read && (
-                          <Circle className="h-1.5 w-1.5 fill-[var(--brand)] text-[var(--brand)]" />
+                          <Circle className="h-1.5 w-1.5 fill-(--brand) text-(--brand)" />
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground">{n.description}</p>

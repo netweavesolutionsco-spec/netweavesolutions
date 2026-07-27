@@ -28,10 +28,11 @@ export async function sendMail({ to, subject, html, text }) {
 
 export const emailTemplates = {
   verifyEmail: (name, link) => ({
-    subject: "Verify your Netweavesolutions account",
-    html: `<p>Hi ${name || "there"},</p>
-      <p>Confirm your email to activate your Netweavesolutions client account:</p>
-      <p><a href="${link}">Verify email</a></p>
+    subject: "New client account awaiting approval",
+    html: `<p>Hi team,</p>
+      <p>A new client account for ${name || "a new user"} is waiting for approval.</p>
+      <p>Use the button below to approve the account:</p>
+      <p><a href="${link}">Approve account</a></p>
       <p>Link expires in 24 hours.</p>`,
   }),
   resetPassword: (name, link) => ({

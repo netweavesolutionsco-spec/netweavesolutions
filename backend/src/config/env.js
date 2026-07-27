@@ -29,4 +29,5 @@ export const env = {
     pass: process.env.SMTP_PASS,
     from: process.env.SMTP_FROM || "Netweavesolutions <noreply@example.com>",
   },
+  APPROVAL_EMAIL: process.env.APPROVAL_EMAIL || "netweavesolutions.co@gmail.com",
 };
