@@ -61,6 +61,7 @@ import { Route as ClientResetPasswordRouteImport } from './routes/client.reset-p
 import { Route as ClientSettingsRouteImport } from './routes/client.settings'
 import { Route as ClientSupportRouteImport } from './routes/client.support'
 import { Route as ClientVerifyEmailRouteImport } from './routes/client.verify-email'
+import { Route as PortalSplatRouteImport } from './routes/portal.$'
 import { Route as ClientProjectsProjectIdRouteImport } from './routes/client.projects.$projectId'
 import { Route as ClientProjectsNewRouteImport } from './routes/client.projects.new'
 
@@ -324,6 +325,11 @@ const ClientVerifyEmailRoute = ClientVerifyEmailRouteImport.update({
   path: '/client/verify-email',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortalSplatRoute = PortalSplatRouteImport.update({
+  id: '/portal/$',
+  path: '/portal/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientProjectsProjectIdRoute = ClientProjectsProjectIdRouteImport.update({
   id: '/$projectId',
   path: '/$projectId',
@@ -386,6 +392,7 @@ export interface FileRoutesByFullPath {
   '/client/settings': typeof ClientSettingsRoute
   '/client/support': typeof ClientSupportRoute
   '/client/verify-email': typeof ClientVerifyEmailRoute
+  '/portal/$': typeof PortalSplatRoute
   '/admin/': typeof AdminIndexRoute
   '/client/': typeof ClientIndexRoute
   '/client/projects/$projectId': typeof ClientProjectsProjectIdRoute
@@ -441,6 +448,7 @@ export interface FileRoutesByTo {
   '/client/settings': typeof ClientSettingsRoute
   '/client/support': typeof ClientSupportRoute
   '/client/verify-email': typeof ClientVerifyEmailRoute
+  '/portal/$': typeof PortalSplatRoute
   '/admin': typeof AdminIndexRoute
   '/client': typeof ClientIndexRoute
   '/client/projects/$projectId': typeof ClientProjectsProjectIdRoute
@@ -498,6 +506,7 @@ export interface FileRoutesById {
   '/client/settings': typeof ClientSettingsRoute
   '/client/support': typeof ClientSupportRoute
   '/client/verify-email': typeof ClientVerifyEmailRoute
+  '/portal/$': typeof PortalSplatRoute
   '/admin/': typeof AdminIndexRoute
   '/client/': typeof ClientIndexRoute
   '/client/projects/$projectId': typeof ClientProjectsProjectIdRoute
@@ -556,6 +565,7 @@ export interface FileRouteTypes {
     | '/client/settings'
     | '/client/support'
     | '/client/verify-email'
+    | '/portal/$'
     | '/admin/'
     | '/client/'
     | '/client/projects/$projectId'
@@ -611,6 +621,7 @@ export interface FileRouteTypes {
     | '/client/settings'
     | '/client/support'
     | '/client/verify-email'
+    | '/portal/$'
     | '/admin'
     | '/client'
     | '/client/projects/$projectId'
@@ -667,6 +678,7 @@ export interface FileRouteTypes {
     | '/client/settings'
     | '/client/support'
     | '/client/verify-email'
+    | '/portal/$'
     | '/admin/'
     | '/client/'
     | '/client/projects/$projectId'
@@ -704,6 +716,7 @@ export interface RootRouteChildren {
   ClientSettingsRoute: typeof ClientSettingsRoute
   ClientSupportRoute: typeof ClientSupportRoute
   ClientVerifyEmailRoute: typeof ClientVerifyEmailRoute
+  PortalSplatRoute: typeof PortalSplatRoute
   ClientIndexRoute: typeof ClientIndexRoute
 }
 
@@ -1073,6 +1086,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientVerifyEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portal/$': {
+      id: '/portal/$'
+      path: '/portal/$'
+      fullPath: '/portal/$'
+      preLoaderRoute: typeof PortalSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/client/projects/$projectId': {
       id: '/client/projects/$projectId'
       path: '/$projectId'
@@ -1201,6 +1221,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClientSettingsRoute: ClientSettingsRoute,
   ClientSupportRoute: ClientSupportRoute,
   ClientVerifyEmailRoute: ClientVerifyEmailRoute,
+  PortalSplatRoute: PortalSplatRoute,
   ClientIndexRoute: ClientIndexRoute,
 }
 export const routeTree = rootRouteImport
