@@ -53,12 +53,51 @@ async function issueSession(res, client, session) {
   return session?.access_token ?? null;
 }
 
+function isEmailNotConfirmedError(error) {
+  const message = String(error?.message ?? "").toLowerCase();
+  const code = String(error?.code ?? "").toLowerCase();
+  return message.includes("email not confirmed") || code.includes("email_not_confirmed");
+}
+
+async function signInClientWithPassword(email, password) {
+  let result = await supabaseAdmin.auth.signInWithPassword({ email, password });
+
+  if (result.error && isEmailNotConfirmedError(result.error)) {
+    const client = await findClientByEmail(email);
+    if (client && !client.emailVerified) {
+      await updateClient(client.id, { emailVerified: true });
+      result = await supabaseAdmin.auth.signInWithPassword({ email, password });
+    }
+  }
+
+  return result;
+}
+
 // --- Handlers ---
 export async function register(req, res) {
   const { fullName, email, phone, companyName, country, password, referralCode } = req.body;
 
   const existing = await findClientByEmail(email);
-  if (existing) return res.status(409).json({ error: "Email already registered" });
+  if (existing) {
+    if (!existing.emailVerified) {
+      const client = await updateClient(existing.id, {
+        fullName,
+        phone,
+        companyName,
+        country,
+        password,
+        emailVerified: true,
+      });
+
+      return res.status(200).json({
+        ok: true,
+        message: "Account is ready. You can sign in now.",
+        client: toSafeClient(client),
+      });
+    }
+
+    return res.status(409).json({ error: "Email already registered" });
+  }
 
   const client = await createClient({
     fullName,
@@ -69,20 +108,20 @@ export async function register(req, res) {
     referralCode,
     password,
     acceptedTerms: true,
-    emailVerified: false,
+    emailVerified: true,
     role: "viewer",
   });
 
   return res.status(201).json({
     ok: true,
-    message: "Account created successfully. Please check your inbox to verify your email.",
+    message: "Account created successfully. You can sign in now.",
     client: toSafeClient(client),
   });
 }
 
 export async function login(req, res) {
   const { email, password } = req.body;
-  const { data, error } = await supabaseAdmin.auth.signInWithPassword({ email, password });
+  const { data, error } = await signInClientWithPassword(email, password);
   if (error || !data.session || !data.user) {
     return res.status(401).json({ error: "Invalid credentials" });
   }

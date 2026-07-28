@@ -9,7 +9,7 @@ called by same-origin proxy routes in the Lovable frontend.
 - Express 4 + Helmet + CORS + express-rate-limit
 - Supabase service role client for persistence
 - JWT (access + refresh) with bcrypt-hashed passwords
-- Nodemailer for verification / OTP / password reset emails
+- Nodemailer for OTP / password reset emails
 - Zod for input validation
 - MVC layout: `services/`, `controllers/`, `routes/`, `middleware/`, `utils/`
 
@@ -58,7 +58,7 @@ allows requests from the app.
 
 Auth (`/auth`)
 
-- `POST /register` — create account, send email verification token
+- `POST /register` — create confirmed client account
 - `POST /login` — email + password → { accessToken } + refresh cookie
 - `POST /logout` — clears refresh cookie + rotates jti
 - `POST /refresh` — rotates refresh cookie, returns new access token
