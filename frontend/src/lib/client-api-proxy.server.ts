@@ -19,13 +19,35 @@ function normalizeBackendUrl(value?: string): string {
   return trimmed.replace(/\/$/, "");
 }
 
-function getBackendApiUrl(): string {
-  return normalizeBackendUrl(
-    process.env.CLIENT_API_URL ||
-      process.env.VITE_CLIENT_API_URL ||
-      process.env.API_PUBLIC_URL ||
-      DEFAULT_BACKEND_API_URL,
-  );
+function isLoopbackHostname(hostname: string): boolean {
+  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "0.0.0.0";
+}
+
+function isLoopbackUrl(value: string): boolean {
+  try {
+    return isLoopbackHostname(new URL(value).hostname);
+  } catch {
+    return false;
+  }
+}
+
+function getBackendApiUrl(request: Request): string {
+  const frontendHostname = new URL(request.url).hostname;
+  const allowLoopbackBackend = isLoopbackHostname(frontendHostname);
+  const candidates = [
+    process.env.CLIENT_API_URL,
+    process.env.VITE_CLIENT_API_URL,
+    process.env.API_PUBLIC_URL,
+    DEFAULT_BACKEND_API_URL,
+  ];
+
+  for (const candidate of candidates) {
+    const normalized = normalizeBackendUrl(candidate);
+    if (!allowLoopbackBackend && isLoopbackUrl(normalized)) continue;
+    return normalized;
+  }
+
+  return DEFAULT_BACKEND_API_URL;
 }
 
 function createForwardHeaders(request: Request): Headers {
@@ -71,7 +93,9 @@ function appendSetCookies(headers: Headers, responseHeaders: Headers) {
 
 export async function proxyClientApiRequest(request: Request): Promise<Response> {
   const incomingUrl = new URL(request.url);
-  const backendUrl = new URL(`${getBackendApiUrl()}${incomingUrl.pathname}${incomingUrl.search}`);
+  const backendUrl = new URL(
+    `${getBackendApiUrl(request)}${incomingUrl.pathname}${incomingUrl.search}`,
+  );
   const method = request.method.toUpperCase();
 
   try {

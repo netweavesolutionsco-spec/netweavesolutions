@@ -24,7 +24,9 @@ const API_URL: string = import.meta.env.PROD
   : normalizeApiBaseUrl(resolvedEnvUrl) || DEFAULT_DEV_API_BASE_URL;
 
 // Log the resolved API URL (both in dev and in browser console for debugging)
-const logMessage = `[client-api] API URL: ${API_URL || "same-origin"} (env: ${resolvedEnvUrl || "NOT SET"})`;
+const logMessage = `[client-api] API URL: ${
+  API_URL || "same-origin"
+} (env: ${import.meta.env.PROD ? "ignored in production" : resolvedEnvUrl || "NOT SET"})`;
 if (import.meta.env.DEV) {
   console.debug(logMessage);
 } else {
