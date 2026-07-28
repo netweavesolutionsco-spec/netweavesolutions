@@ -1,24 +1,11 @@
-import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { env } from "../config/env.js";
-import {
-  signAccessToken,
-  signRefreshToken,
-  verifyRefresh,
-  newOpaqueToken,
-  newJti,
-  newOtp,
-  refreshCookieOptions,
-  REFRESH_COOKIE,
-} from "../utils/tokens.js";
-import { sendMail, emailTemplates } from "../utils/mailer.js";
+import { supabaseAdmin } from "../config/supabase.js";
+import { refreshCookieOptions, REFRESH_COOKIE } from "../utils/tokens.js";
 import {
   createClient,
   findClientByEmail,
   findClientById,
-  findClientByVerifyToken,
-  findClientByResetToken,
-  findClientByOtpCode,
   updateClient,
   toSafeClient,
 } from "../services/clientService.js";
@@ -59,16 +46,11 @@ export const changePasswordSchema = z.object({
 export const otpSchema = z.object({ otp: z.string().length(6) });
 
 // --- Helpers ---
-async function issueSession(res, client) {
-  const jti = newJti();
-  await updateClient(client.id, {
-    refreshTokenJti: jti,
-    lastLoginAt: new Date(),
-  });
-  const accessToken = signAccessToken(client);
-  const refreshToken = signRefreshToken(client, jti);
-  res.cookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions());
-  return accessToken;
+async function issueSession(res, client, session) {
+  if (session?.refresh_token) {
+    res.cookie(REFRESH_COOKIE, session.refresh_token, refreshCookieOptions());
+  }
+  return session?.access_token ?? null;
 }
 
 // --- Handlers ---
@@ -78,9 +60,6 @@ export async function register(req, res) {
   const existing = await findClientByEmail(email);
   if (existing) return res.status(409).json({ error: "Email already registered" });
 
-  const passwordHash = await bcrypt.hash(password, 12);
-  const approvalToken = newOpaqueToken();
-  const approvalExpires = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const client = await createClient({
     fullName,
     email,
@@ -88,48 +67,41 @@ export async function register(req, res) {
     companyName,
     country,
     referralCode,
-    passwordHash,
+    password,
     acceptedTerms: true,
     emailVerified: false,
-    emailVerifyToken: approvalToken,
-    emailVerifyExpires: approvalExpires,
-    status: "active",
+    role: "viewer",
   });
-
-  const approvalLink = `${env.FRONTEND_PRIMARY}/client/verify-email?token=${approvalToken}`;
-  const tpl = emailTemplates.verifyEmail(client.fullName, approvalLink);
-  sendMail({ to: env.APPROVAL_EMAIL, ...tpl }).catch((e) => console.error("[mail]", e));
 
   return res.status(201).json({
     ok: true,
-    message: "Account created successfully. Please wait for the company to approve your account.",
+    message: "Account created successfully. Please check your inbox to verify your email.",
     client: toSafeClient(client),
   });
 }
 
 export async function login(req, res) {
   const { email, password } = req.body;
+  const { data, error } = await supabaseAdmin.auth.signInWithPassword({ email, password });
+  if (error || !data.session || !data.user) {
+    return res.status(401).json({ error: "Invalid credentials" });
+  }
+
   const client = await findClientByEmail(email);
   if (!client) return res.status(401).json({ error: "Invalid credentials" });
   if (client.status !== "active") return res.status(403).json({ error: "Account suspended" });
   if (!client.emailVerified) {
-    return res.status(403).json({ error: "Account pending approval. Please wait for company verification." });
+    return res.status(403).json({ error: "Please verify your email before signing in." });
   }
-  const ok = await bcrypt.compare(password, client.passwordHash);
-  if (!ok) return res.status(401).json({ error: "Invalid credentials" });
 
-  const accessToken = await issueSession(res, client);
+  const accessToken = await issueSession(res, client, data.session);
   return res.json({ ok: true, accessToken, client: toSafeClient(client) });
 }
 
 export async function logout(req, res) {
-  const rt = req.cookies?.[REFRESH_COOKIE];
-  if (rt) {
-    try {
-      const payload = verifyRefresh(rt);
-      await updateClient(payload.sub, { refreshTokenJti: null });
-    } catch {}
-  }
+  try {
+    await supabaseAdmin.auth.signOut();
+  } catch {}
   res.clearCookie(REFRESH_COOKIE, { ...refreshCookieOptions(), maxAge: 0 });
   return res.json({ ok: true });
 }
@@ -137,17 +109,18 @@ export async function logout(req, res) {
 export async function refresh(req, res) {
   const rt = req.cookies?.[REFRESH_COOKIE];
   if (!rt) return res.status(401).json({ error: "No refresh token" });
-  let payload;
-  try {
-    payload = verifyRefresh(rt);
-  } catch {
+
+  const { data, error } = await supabaseAdmin.auth.refreshSession({ refresh_token: rt });
+  if (error || !data.session || !data.user) {
     return res.status(401).json({ error: "Invalid refresh token" });
   }
-  const client = await findClientById(payload.sub);
-  if (!client || client.refreshTokenJti !== payload.jti || client.status !== "active") {
+
+  const client = await findClientById(data.user.id);
+  if (!client || client.status !== "active") {
     return res.status(401).json({ error: "Session revoked" });
   }
-  const accessToken = await issueSession(res, client);
+
+  const accessToken = await issueSession(res, client, data.session);
   return res.json({ ok: true, accessToken, client: toSafeClient(client) });
 }
 
@@ -157,88 +130,85 @@ export async function me(req, res) {
 
 export async function verifyEmail(req, res) {
   const { token } = req.body;
-  const client = await findClientByVerifyToken(token);
-  if (!client || !client.emailVerifyExpires || client.emailVerifyExpires < new Date()) {
+  if (!token) {
+    return res.status(400).json({ error: "Missing verification token" });
+  }
+
+  const { data, error } = await supabaseAdmin.auth.verifyOtp({ token, type: "signup" });
+  if (error || !data.user) {
     return res.status(400).json({ error: "Invalid or expired token" });
   }
-  await updateClient(client.id, {
-    emailVerified: true,
-    emailVerifyToken: null,
-    emailVerifyExpires: null,
-  });
+
+  await updateClient(data.user.id, { emailVerified: true });
   return res.json({ ok: true });
 }
 
 export async function forgotPassword(req, res) {
   const { email } = req.body;
-  const client = await findClientByEmail(email);
-  if (client) {
-    const token = newOpaqueToken();
-    const expires = new Date(Date.now() + 60 * 60 * 1000);
-    await updateClient(client.id, {
-      passwordResetToken: token,
-      passwordResetExpires: expires,
-    });
-    const link = `${env.FRONTEND_PRIMARY}/client/reset-password?token=${token}`;
-    const tpl = emailTemplates.resetPassword(client.fullName, link);
-    sendMail({ to: email, ...tpl }).catch((e) => console.error("[mail]", e));
+  const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
+    redirectTo: `${env.FRONTEND_PRIMARY}/client/reset-password`,
+  });
+
+  if (error) {
+    return res.status(400).json({ error: error.message });
   }
+
   return res.json({ ok: true, message: "If that email exists, a reset link was sent." });
 }
 
 export async function resetPassword(req, res) {
   const { token, password } = req.body;
-  const client = await findClientByResetToken(token);
-  if (!client || !client.passwordResetExpires || client.passwordResetExpires < new Date()) {
+  const { data, error } = await supabaseAdmin.auth.verifyOtp({ token, type: "recovery" });
+  if (error || !data.user) {
     return res.status(400).json({ error: "Invalid or expired token" });
   }
-  const passwordHash = await bcrypt.hash(password, 12);
-  await updateClient(client.id, {
-    passwordHash,
-    passwordResetToken: null,
-    passwordResetExpires: null,
-    refreshTokenJti: null,
-  });
+
+  await updateClient(data.user.id, { password });
   return res.json({ ok: true });
 }
 
 export async function changePassword(req, res) {
   const { currentPassword, newPassword } = req.body;
   if (!req.client) return res.status(401).json({ error: "Client not found" });
-  const ok = await bcrypt.compare(currentPassword, req.client.passwordHash);
-  if (!ok) return res.status(400).json({ error: "Current password is incorrect" });
-  const passwordHash = await bcrypt.hash(newPassword, 12);
-  const client = await updateClient(req.client.id, { passwordHash });
+
+  const { error } = await supabaseAdmin.auth.signInWithPassword({
+    email: req.client.email,
+    password: currentPassword,
+  });
+  if (error) return res.status(400).json({ error: "Current password is incorrect" });
+
+  const client = await updateClient(req.client.id, { password: newPassword });
   return res.json({ ok: true, client: toSafeClient(client) });
 }
 
 export async function sendOtp(req, res) {
   if (!req.client) return res.status(401).json({ error: "Client not found" });
-  const code = newOtp();
-  const expires = new Date(Date.now() + 10 * 60 * 1000);
-  await updateClient(req.client.id, {
-    otpCode: code,
-    otpExpires: expires,
+
+  const { error } = await supabaseAdmin.auth.signInWithOtp({
+    email: req.client.email,
+    options: { emailRedirectTo: `${env.FRONTEND_PRIMARY}/auth?callback=true` },
   });
-  const tpl = emailTemplates.otp(req.client.fullName, code);
-  sendMail({ to: req.client.email, ...tpl }).catch((e) => console.error("[mail]", e));
-  return res.json({ ok: true });
+
+  if (error) {
+    return res.status(400).json({ error: error.message });
+  }
+
+  return res.json({ ok: true, message: "Verification link sent." });
 }
 
 export async function verifyOtp(req, res) {
   const { otp } = req.body;
   if (!req.client) return res.status(401).json({ error: "Client not found" });
-  if (
-    !req.client.otpCode ||
-    !req.client.otpExpires ||
-    req.client.otpExpires < new Date() ||
-    req.client.otpCode !== otp
-  ) {
+
+  const { data, error } = await supabaseAdmin.auth.verifyOtp({
+    email: req.client.email,
+    token: otp,
+    type: "email",
+  });
+
+  if (error || !data.session || !data.user) {
     return res.status(400).json({ error: "Invalid or expired code" });
   }
-  await updateClient(req.client.id, {
-    otpCode: null,
-    otpExpires: null,
-  });
-  return res.json({ ok: true });
+
+  return res.json({ ok: true, accessToken: data.session.access_token });
 }
