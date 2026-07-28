@@ -29,8 +29,8 @@ const NAV: ReadonlyArray<{
   exact?: boolean;
 }> = [
   { to: "/client", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { to: "/client/projects", label: "My Projects", icon: FolderKanban },
-  { to: "/client/projects/new", label: "Create New Project", icon: PlusCircle },
+  { to: "/client/projects", label: "My Projects", icon: FolderKanban, exact: true },
+  { to: "/client/projects/new", label: "Create New Project", icon: PlusCircle, exact: true },
   { to: "/client/requirements", label: "My Requirements", icon: ListChecks },
   { to: "/client/files", label: "Files", icon: FileText },
   { to: "/client/invoices", label: "Invoices", icon: Receipt },
@@ -79,8 +79,8 @@ export function ClientPortalShell({ children, title }: { children: ReactNode; ti
 
   return (
     <main className="min-h-screen bg-background">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 pb-10 pt-24 sm:px-6 lg:flex-row lg:gap-8">
-        <aside className="lg:sticky lg:top-24 lg:h-[calc(100vh-7rem)] lg:w-64 lg:shrink-0">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 py-6 sm:px-6 lg:flex-row lg:gap-8">
+        <aside className="lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:w-64 lg:shrink-0">
           <div className="flex h-full flex-col rounded-xl border border-border/70 bg-card/80 shadow-soft backdrop-blur">
             <div className="border-b border-border/70 p-4">
               <div className="truncate text-sm font-semibold">{user.fullName}</div>

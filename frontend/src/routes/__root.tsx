@@ -173,7 +173,7 @@ function RootComponent() {
                 style={{ background: "var(--gradient-radial)" }}
               />
             )}
-            {!isAdmin && <Navbar />}
+            {!chromeless && <Navbar />}
             {chromeless ? (
               <Outlet />
             ) : (
@@ -194,4 +194,3 @@ function RootComponent() {
     </QueryClientProvider>
   );
 }
-
