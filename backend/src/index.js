@@ -8,6 +8,7 @@ import rateLimit from "express-rate-limit";
 import { env } from "./config/env.js";
 import authRoutes from "./routes/auth.routes.js";
 import profileRoutes from "./routes/profile.routes.js";
+import portalRoutes from "./routes/portal.routes.js";
 import { errorHandler, notFound } from "./middleware/error.js";
 
 const app = express();
@@ -52,7 +53,7 @@ app.use(cors(corsOptions));
 app.options("*", cors(corsOptions));
 
 // -------------------- Body Parser --------------------
-app.use(express.json({ limit: "1mb" }));
+app.use(express.json({ limit: "12mb" }));
 app.use(cookieParser());
 
 // -------------------- Rate Limiter --------------------
@@ -76,6 +77,7 @@ app.get("/healthz", (_req, res) => {
 // -------------------- Routes --------------------
 app.use("/auth", authRoutes);
 app.use("/profile", profileRoutes);
+app.use("/portal", portalRoutes);
 
 // -------------------- Error Handling --------------------
 app.use(notFound);

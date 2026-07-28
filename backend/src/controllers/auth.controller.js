@@ -9,6 +9,7 @@ import {
   updateClient,
   toSafeClient,
 } from "../services/clientService.js";
+import { recordActivity } from "../services/portal.service.js";
 
 // --- Schemas ---
 export const registerSchema = z
@@ -73,6 +74,14 @@ async function signInClientWithPassword(email, password) {
   return result;
 }
 
+async function auditAuth(clientId, action, description, metadata = {}) {
+  try {
+    await recordActivity(clientId, clientId, action, description, metadata);
+  } catch (error) {
+    console.warn(`[audit] ${action} could not be recorded:`, error?.message ?? error);
+  }
+}
+
 // --- Handlers ---
 export async function register(req, res) {
   const { fullName, email, phone, companyName, country, password, referralCode } = req.body;
@@ -134,10 +143,19 @@ export async function login(req, res) {
   }
 
   const accessToken = await issueSession(res, client, data.session);
+  await auditAuth(client.id, "login", "Client logged in", { email: client.email });
   return res.json({ ok: true, accessToken, client: toSafeClient(client) });
 }
 
 export async function logout(req, res) {
+  const header = req.headers.authorization || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : null;
+  if (token) {
+    try {
+      const { data } = await supabaseAdmin.auth.getUser(token);
+      if (data.user?.id) await auditAuth(data.user.id, "logout", "Client logged out");
+    } catch {}
+  }
   try {
     await supabaseAdmin.auth.signOut();
   } catch {}

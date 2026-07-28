@@ -151,11 +151,14 @@ export const api = {
     apiFetch<T>(p, { method: "POST", body: body === undefined ? undefined : JSON.stringify(body) }),
   put: <T = unknown>(p: string, body?: unknown) =>
     apiFetch<T>(p, { method: "PUT", body: body === undefined ? undefined : JSON.stringify(body) }),
+  patch: <T = unknown>(p: string, body?: unknown) =>
+    apiFetch<T>(p, { method: "PATCH", body: body === undefined ? undefined : JSON.stringify(body) }),
   del: <T = unknown>(p: string) => apiFetch<T>(p, { method: "DELETE" }),
 };
 
 export interface ClientUser {
   _id: string;
+  id?: string;
   email: string;
   fullName: string;
   phone?: string;

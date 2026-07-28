@@ -41,7 +41,8 @@ const Ctx = createContext<AuthState | null>(null);
 function normalizeClientUser(raw: Partial<ClientUser> | null | undefined): ClientUser | null {
   if (!raw) return null;
   return {
-    _id: raw._id ?? "",
+    _id: raw._id ?? raw.id ?? "",
+    id: raw.id ?? raw._id ?? "",
     email: raw.email ?? "",
     fullName: raw.fullName ?? "",
     phone: raw.phone ?? "",

@@ -44,6 +44,7 @@ import { Route as ApiChatRouteImport } from './routes/api/chat'
 import { Route as AuthSplatRouteImport } from './routes/auth.$'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as ClientIndexRouteImport } from './routes/client.index'
+import { Route as ClientActivityRouteImport } from './routes/client.activity'
 import { Route as ClientFilesRouteImport } from './routes/client.files'
 import { Route as ClientForgotPasswordRouteImport } from './routes/client.forgot-password'
 import { Route as ClientInvoicesRouteImport } from './routes/client.invoices'
@@ -60,6 +61,7 @@ import { Route as ClientResetPasswordRouteImport } from './routes/client.reset-p
 import { Route as ClientSettingsRouteImport } from './routes/client.settings'
 import { Route as ClientSupportRouteImport } from './routes/client.support'
 import { Route as ClientVerifyEmailRouteImport } from './routes/client.verify-email'
+import { Route as ClientProjectsProjectIdRouteImport } from './routes/client.projects.$projectId'
 import { Route as ClientProjectsNewRouteImport } from './routes/client.projects.new'
 
 const IndexRoute = IndexRouteImport.update({
@@ -237,6 +239,11 @@ const ClientIndexRoute = ClientIndexRouteImport.update({
   path: '/client/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClientActivityRoute = ClientActivityRouteImport.update({
+  id: '/client/activity',
+  path: '/client/activity',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientFilesRoute = ClientFilesRouteImport.update({
   id: '/client/files',
   path: '/client/files',
@@ -317,6 +324,11 @@ const ClientVerifyEmailRoute = ClientVerifyEmailRouteImport.update({
   path: '/client/verify-email',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClientProjectsProjectIdRoute = ClientProjectsProjectIdRouteImport.update({
+  id: '/$projectId',
+  path: '/$projectId',
+  getParentRoute: () => ClientProjectsRoute,
+} as any)
 const ClientProjectsNewRoute = ClientProjectsNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -357,6 +369,7 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/auth/$': typeof AuthSplatRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/client/activity': typeof ClientActivityRoute
   '/client/files': typeof ClientFilesRoute
   '/client/forgot-password': typeof ClientForgotPasswordRoute
   '/client/invoices': typeof ClientInvoicesRoute
@@ -375,6 +388,7 @@ export interface FileRoutesByFullPath {
   '/client/verify-email': typeof ClientVerifyEmailRoute
   '/admin/': typeof AdminIndexRoute
   '/client/': typeof ClientIndexRoute
+  '/client/projects/$projectId': typeof ClientProjectsProjectIdRoute
   '/client/projects/new': typeof ClientProjectsNewRoute
 }
 export interface FileRoutesByTo {
@@ -410,6 +424,7 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/auth/$': typeof AuthSplatRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/client/activity': typeof ClientActivityRoute
   '/client/files': typeof ClientFilesRoute
   '/client/forgot-password': typeof ClientForgotPasswordRoute
   '/client/invoices': typeof ClientInvoicesRoute
@@ -428,6 +443,7 @@ export interface FileRoutesByTo {
   '/client/verify-email': typeof ClientVerifyEmailRoute
   '/admin': typeof AdminIndexRoute
   '/client': typeof ClientIndexRoute
+  '/client/projects/$projectId': typeof ClientProjectsProjectIdRoute
   '/client/projects/new': typeof ClientProjectsNewRoute
 }
 export interface FileRoutesById {
@@ -465,6 +481,7 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/auth/$': typeof AuthSplatRoute
   '/blog/$slug': typeof BlogSlugRoute
+  '/client/activity': typeof ClientActivityRoute
   '/client/files': typeof ClientFilesRoute
   '/client/forgot-password': typeof ClientForgotPasswordRoute
   '/client/invoices': typeof ClientInvoicesRoute
@@ -483,6 +500,7 @@ export interface FileRoutesById {
   '/client/verify-email': typeof ClientVerifyEmailRoute
   '/admin/': typeof AdminIndexRoute
   '/client/': typeof ClientIndexRoute
+  '/client/projects/$projectId': typeof ClientProjectsProjectIdRoute
   '/client/projects/new': typeof ClientProjectsNewRoute
 }
 export interface FileRouteTypes {
@@ -521,6 +539,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/auth/$'
     | '/blog/$slug'
+    | '/client/activity'
     | '/client/files'
     | '/client/forgot-password'
     | '/client/invoices'
@@ -539,6 +558,7 @@ export interface FileRouteTypes {
     | '/client/verify-email'
     | '/admin/'
     | '/client/'
+    | '/client/projects/$projectId'
     | '/client/projects/new'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -574,6 +594,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/auth/$'
     | '/blog/$slug'
+    | '/client/activity'
     | '/client/files'
     | '/client/forgot-password'
     | '/client/invoices'
@@ -592,6 +613,7 @@ export interface FileRouteTypes {
     | '/client/verify-email'
     | '/admin'
     | '/client'
+    | '/client/projects/$projectId'
     | '/client/projects/new'
   id:
     | '__root__'
@@ -628,6 +650,7 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/auth/$'
     | '/blog/$slug'
+    | '/client/activity'
     | '/client/files'
     | '/client/forgot-password'
     | '/client/invoices'
@@ -646,6 +669,7 @@ export interface FileRouteTypes {
     | '/client/verify-email'
     | '/admin/'
     | '/client/'
+    | '/client/projects/$projectId'
     | '/client/projects/new'
   fileRoutesById: FileRoutesById
 }
@@ -663,6 +687,7 @@ export interface RootRouteChildren {
   ServicesRoute: typeof ServicesRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiChatRoute: typeof ApiChatRoute
+  ClientActivityRoute: typeof ClientActivityRoute
   ClientFilesRoute: typeof ClientFilesRoute
   ClientForgotPasswordRoute: typeof ClientForgotPasswordRoute
   ClientInvoicesRoute: typeof ClientInvoicesRoute
@@ -929,6 +954,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/client/activity': {
+      id: '/client/activity'
+      path: '/client/activity'
+      fullPath: '/client/activity'
+      preLoaderRoute: typeof ClientActivityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/client/files': {
       id: '/client/files'
       path: '/client/files'
@@ -1041,6 +1073,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientVerifyEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/client/projects/$projectId': {
+      id: '/client/projects/$projectId'
+      path: '/$projectId'
+      fullPath: '/client/projects/$projectId'
+      preLoaderRoute: typeof ClientProjectsProjectIdRouteImport
+      parentRoute: typeof ClientProjectsRoute
+    }
     '/client/projects/new': {
       id: '/client/projects/new'
       path: '/new'
@@ -1118,10 +1157,12 @@ const BlogRouteChildren: BlogRouteChildren = {
 const BlogRouteWithChildren = BlogRoute._addFileChildren(BlogRouteChildren)
 
 interface ClientProjectsRouteChildren {
+  ClientProjectsProjectIdRoute: typeof ClientProjectsProjectIdRoute
   ClientProjectsNewRoute: typeof ClientProjectsNewRoute
 }
 
 const ClientProjectsRouteChildren: ClientProjectsRouteChildren = {
+  ClientProjectsProjectIdRoute: ClientProjectsProjectIdRoute,
   ClientProjectsNewRoute: ClientProjectsNewRoute,
 }
 
@@ -1143,6 +1184,7 @@ const rootRouteChildren: RootRouteChildren = {
   ServicesRoute: ServicesRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiChatRoute: ApiChatRoute,
+  ClientActivityRoute: ClientActivityRoute,
   ClientFilesRoute: ClientFilesRoute,
   ClientForgotPasswordRoute: ClientForgotPasswordRoute,
   ClientInvoicesRoute: ClientInvoicesRoute,

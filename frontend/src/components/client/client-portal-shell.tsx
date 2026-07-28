@@ -14,6 +14,7 @@ import {
   Bell,
   User,
   Settings,
+  Activity,
   LogOut,
   Loader2,
   ArrowLeft,
@@ -31,7 +32,7 @@ const NAV: ReadonlyArray<{
   { to: "/client", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/client/projects", label: "My Projects", icon: FolderKanban, exact: true },
   { to: "/client/projects/new", label: "Create New Project", icon: PlusCircle, exact: true },
-  { to: "/client/requirements", label: "My Requirements", icon: ListChecks },
+  { to: "/client/requirements", label: "Quotations", icon: ListChecks },
   { to: "/client/files", label: "Files", icon: FileText },
   { to: "/client/invoices", label: "Invoices", icon: Receipt },
   { to: "/client/payments", label: "Payments", icon: CreditCard },
@@ -39,6 +40,7 @@ const NAV: ReadonlyArray<{
   { to: "/client/support", label: "Support", icon: LifeBuoy },
   { to: "/client/messages", label: "Messages", icon: MessageSquare },
   { to: "/client/notifications", label: "Notifications", icon: Bell },
+  { to: "/client/activity", label: "Activity Log", icon: Activity },
   { to: "/client/profile", label: "Profile", icon: User },
   { to: "/client/settings", label: "Settings", icon: Settings },
 ];
@@ -141,21 +143,5 @@ export function ClientPortalShell({ children, title }: { children: ReactNode; ti
         </section>
       </div>
     </main>
-  );
-}
-
-export function ComingSoon({ label }: { label: string }) {
-  return (
-    <div className="rounded-xl border border-dashed border-border/70 bg-card/40 p-10 text-center">
-      <h2 className="text-lg font-semibold">{label}</h2>
-      <p className="mt-2 text-sm text-muted-foreground">
-        This module ships in Phase 2. Your Client API already has the schema for it.
-      </p>
-      <div className="mt-4">
-        <Button asChild variant="outline" size="sm">
-          <Link to="/client">Back to dashboard</Link>
-        </Button>
-      </div>
-    </div>
   );
 }
