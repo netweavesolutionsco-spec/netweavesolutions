@@ -16,6 +16,7 @@ import {
   Settings,
   LogOut,
   Loader2,
+  ArrowLeft,
 } from "lucide-react";
 import { useClientAuth } from "@/hooks/use-client-auth";
 import { cn } from "@/lib/utils";
@@ -77,57 +78,69 @@ export function ClientPortalShell({ children, title }: { children: ReactNode; ti
   }
 
   return (
-    <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 py-8 md:grid-cols-[240px,1fr]">
-      <aside className="md:sticky md:top-24 md:h-[calc(100vh-8rem)]">
-        <div className="rounded-2xl border border-border/60 bg-card/70 p-3 backdrop-blur">
-          <div className="mb-3 px-3 py-2">
-            <div className="truncate text-sm font-semibold">{user.fullName}</div>
-            <div className="truncate text-xs text-muted-foreground">{user.email}</div>
-          </div>
-          <nav className="space-y-1">
-            {NAV.map(({ to, label, icon: Icon, exact }) => {
-              const active = exact
-                ? pathname === to
-                : pathname === to || pathname.startsWith(to + "/");
-              return (
-                <Link
-                  key={to}
-                  to={to}
-                  className={cn(
-                    "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
-                    active
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-accent hover:text-foreground",
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {label}
-                </Link>
-              );
-            })}
-            <button
-              onClick={async () => {
-                await logout();
-                navigate({ to: "/client/login" });
-              }}
-              className="flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </button>
-          </nav>
-        </div>
-      </aside>
+    <main className="min-h-screen bg-background">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-5 px-4 pb-10 pt-24 sm:px-6 lg:flex-row lg:gap-8">
+        <aside className="lg:sticky lg:top-24 lg:h-[calc(100vh-7rem)] lg:w-64 lg:shrink-0">
+          <div className="flex h-full flex-col rounded-xl border border-border/70 bg-card/80 shadow-soft backdrop-blur">
+            <div className="border-b border-border/70 p-4">
+              <div className="truncate text-sm font-semibold">{user.fullName}</div>
+              <div className="mt-0.5 truncate text-xs text-muted-foreground">{user.email}</div>
+            </div>
 
-      <section>
-        {title && (
-          <header className="mb-6">
-            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-          </header>
-        )}
-        {children}
-      </section>
-    </div>
+            <nav className="flex gap-1 overflow-x-auto p-2 lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-y-auto">
+              {NAV.map(({ to, label, icon: Icon, exact }) => {
+                const active = exact
+                  ? pathname === to
+                  : pathname === to || pathname.startsWith(to + "/");
+                return (
+                  <Link
+                    key={to}
+                    to={to}
+                    className={cn(
+                      "flex shrink-0 items-center gap-2 rounded-md px-3 py-2.5 text-sm font-medium transition-colors lg:w-full",
+                      active
+                        ? "bg-primary text-primary-foreground shadow-sm"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="whitespace-nowrap lg:whitespace-normal">{label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <div className="border-t border-border/70 p-2">
+              <Button asChild variant="ghost" size="sm" className="mb-1 w-full justify-start">
+                <Link to="/">
+                  <ArrowLeft className="h-4 w-4" />
+                  Back to website
+                </Link>
+              </Button>
+              <button
+                onClick={async () => {
+                  await logout();
+                  navigate({ to: "/client/login" });
+                }}
+                className="flex min-h-10 w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </button>
+            </div>
+          </div>
+        </aside>
+
+        <section className="min-w-0 flex-1">
+          {title && (
+            <header className="mb-5 rounded-xl border border-border/70 bg-card/80 px-5 py-4 shadow-soft">
+              <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
+            </header>
+          )}
+          {children}
+        </section>
+      </div>
+    </main>
   );
 }
 
