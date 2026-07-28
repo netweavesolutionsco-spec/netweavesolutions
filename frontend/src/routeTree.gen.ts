@@ -18,6 +18,7 @@ import { Route as CareersRouteImport } from './routes/careers'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as PortfolioRouteImport } from './routes/portfolio'
 import { Route as PricingRouteImport } from './routes/pricing'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ServicesRouteImport } from './routes/services'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
@@ -40,6 +41,7 @@ import { Route as AdminTestimonialsRouteImport } from './routes/admin.testimonia
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as AdminWebsiteRouteImport } from './routes/admin.website'
 import { Route as ApiChatRouteImport } from './routes/api/chat'
+import { Route as AuthSplatRouteImport } from './routes/auth.$'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as ClientIndexRouteImport } from './routes/client.index'
 import { Route as ClientFilesRouteImport } from './routes/client.files'
@@ -103,6 +105,11 @@ const PortfolioRoute = PortfolioRouteImport.update({
 const PricingRoute = PricingRouteImport.update({
   id: '/pricing',
   path: '/pricing',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ServicesRoute = ServicesRouteImport.update({
@@ -215,6 +222,11 @@ const ApiChatRoute = ApiChatRouteImport.update({
   path: '/api/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthSplatRoute = AuthSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => AuthRoute,
+} as any)
 const BlogSlugRoute = BlogSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
@@ -315,12 +327,13 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRouteWithChildren
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/blog': typeof BlogRouteWithChildren
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
   '/portfolio': typeof PortfolioRoute
   '/pricing': typeof PricingRoute
+  '/profile': typeof ProfileRoute
   '/services': typeof ServicesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -342,6 +355,7 @@ export interface FileRoutesByFullPath {
   '/admin/users': typeof AdminUsersRoute
   '/admin/website': typeof AdminWebsiteRoute
   '/api/chat': typeof ApiChatRoute
+  '/auth/$': typeof AuthSplatRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/client/files': typeof ClientFilesRoute
   '/client/forgot-password': typeof ClientForgotPasswordRoute
@@ -366,12 +380,13 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/blog': typeof BlogRouteWithChildren
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
   '/portfolio': typeof PortfolioRoute
   '/pricing': typeof PricingRoute
+  '/profile': typeof ProfileRoute
   '/services': typeof ServicesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -393,6 +408,7 @@ export interface FileRoutesByTo {
   '/admin/users': typeof AdminUsersRoute
   '/admin/website': typeof AdminWebsiteRoute
   '/api/chat': typeof ApiChatRoute
+  '/auth/$': typeof AuthSplatRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/client/files': typeof ClientFilesRoute
   '/client/forgot-password': typeof ClientForgotPasswordRoute
@@ -419,12 +435,13 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/admin': typeof AdminRouteWithChildren
-  '/auth': typeof AuthRoute
+  '/auth': typeof AuthRouteWithChildren
   '/blog': typeof BlogRouteWithChildren
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
   '/portfolio': typeof PortfolioRoute
   '/pricing': typeof PricingRoute
+  '/profile': typeof ProfileRoute
   '/services': typeof ServicesRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/admin/analytics': typeof AdminAnalyticsRoute
@@ -446,6 +463,7 @@ export interface FileRoutesById {
   '/admin/users': typeof AdminUsersRoute
   '/admin/website': typeof AdminWebsiteRoute
   '/api/chat': typeof ApiChatRoute
+  '/auth/$': typeof AuthSplatRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/client/files': typeof ClientFilesRoute
   '/client/forgot-password': typeof ClientForgotPasswordRoute
@@ -479,6 +497,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/portfolio'
     | '/pricing'
+    | '/profile'
     | '/services'
     | '/sitemap.xml'
     | '/admin/analytics'
@@ -500,6 +519,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/admin/website'
     | '/api/chat'
+    | '/auth/$'
     | '/blog/$slug'
     | '/client/files'
     | '/client/forgot-password'
@@ -530,6 +550,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/portfolio'
     | '/pricing'
+    | '/profile'
     | '/services'
     | '/sitemap.xml'
     | '/admin/analytics'
@@ -551,6 +572,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/admin/website'
     | '/api/chat'
+    | '/auth/$'
     | '/blog/$slug'
     | '/client/files'
     | '/client/forgot-password'
@@ -582,6 +604,7 @@ export interface FileRouteTypes {
     | '/contact'
     | '/portfolio'
     | '/pricing'
+    | '/profile'
     | '/services'
     | '/sitemap.xml'
     | '/admin/analytics'
@@ -603,6 +626,7 @@ export interface FileRouteTypes {
     | '/admin/users'
     | '/admin/website'
     | '/api/chat'
+    | '/auth/$'
     | '/blog/$slug'
     | '/client/files'
     | '/client/forgot-password'
@@ -629,12 +653,13 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AboutRoute: typeof AboutRoute
   AdminRoute: typeof AdminRouteWithChildren
-  AuthRoute: typeof AuthRoute
+  AuthRoute: typeof AuthRouteWithChildren
   BlogRoute: typeof BlogRouteWithChildren
   CareersRoute: typeof CareersRoute
   ContactRoute: typeof ContactRoute
   PortfolioRoute: typeof PortfolioRoute
   PricingRoute: typeof PricingRoute
+  ProfileRoute: typeof ProfileRoute
   ServicesRoute: typeof ServicesRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiChatRoute: typeof ApiChatRoute
@@ -720,6 +745,13 @@ declare module '@tanstack/react-router' {
       path: '/pricing'
       fullPath: '/pricing'
       preLoaderRoute: typeof PricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/services': {
@@ -875,6 +907,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/chat'
       preLoaderRoute: typeof ApiChatRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/auth/$': {
+      id: '/auth/$'
+      path: '/$'
+      fullPath: '/auth/$'
+      preLoaderRoute: typeof AuthSplatRouteImport
+      parentRoute: typeof AuthRoute
     }
     '/blog/$slug': {
       id: '/blog/$slug'
@@ -1058,6 +1097,16 @@ const AdminRouteChildren: AdminRouteChildren = {
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
+interface AuthRouteChildren {
+  AuthSplatRoute: typeof AuthSplatRoute
+}
+
+const AuthRouteChildren: AuthRouteChildren = {
+  AuthSplatRoute: AuthSplatRoute,
+}
+
+const AuthRouteWithChildren = AuthRoute._addFileChildren(AuthRouteChildren)
+
 interface BlogRouteChildren {
   BlogSlugRoute: typeof BlogSlugRoute
 }
@@ -1084,12 +1133,13 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   AdminRoute: AdminRouteWithChildren,
-  AuthRoute: AuthRoute,
+  AuthRoute: AuthRouteWithChildren,
   BlogRoute: BlogRouteWithChildren,
   CareersRoute: CareersRoute,
   ContactRoute: ContactRoute,
   PortfolioRoute: PortfolioRoute,
   PricingRoute: PricingRoute,
+  ProfileRoute: ProfileRoute,
   ServicesRoute: ServicesRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiChatRoute: ApiChatRoute,

@@ -1,41 +1,30 @@
 /**
  * Fetch client for the standalone Node.js Client API (server/).
- * The API URL is configured via VITE_CLIENT_API_URL.
+ * The production browser client uses same-origin API routes. Those routes proxy
+ * to the deployed backend so the browser never depends on cross-origin CORS.
  *
  * Access token is held in memory; refresh token is a httpOnly cookie
  * set by the API on the API's origin. On 401 we transparently refresh once.
- *
- * IMPORTANT: In production, this MUST use https://netweavesolutions.onrender.com
- * to avoid "Failed to fetch" errors when the frontend and backend are on different domains.
  */
 
-// Always use production Render backend URL - this is the deployed API server
-const DEFAULT_API_BASE_URL = "https://netweavesolutions.onrender.com";
+const DEFAULT_DEV_API_BASE_URL = "http://localhost:4000";
 
 function normalizeApiBaseUrl(value?: string): string {
   const trimmed = value?.trim();
-  
-  // Reject localhost URLs - they should NEVER be used in production
-  if (trimmed?.includes("localhost") || trimmed?.includes("127.0.0.1")) {
-    console.error("[client-api] ERROR: localhost URL detected in production! Using Render backend instead.");
-    return DEFAULT_API_BASE_URL;
-  }
-  
-  if (!trimmed) {
-    // Always fall back to production URL if env var is missing, empty, or whitespace
-    return DEFAULT_API_BASE_URL;
-  }
-  
+
+  if (!trimmed) return "";
+
   // Remove trailing slashes for consistency
   return trimmed.replace(/\/$/, "");
 }
 
-// Resolve API URL with explicit fallback
 const resolvedEnvUrl = import.meta.env.VITE_CLIENT_API_URL as string | undefined;
-const API_URL: string = normalizeApiBaseUrl(resolvedEnvUrl) || DEFAULT_API_BASE_URL;
+const API_URL: string = import.meta.env.PROD
+  ? ""
+  : normalizeApiBaseUrl(resolvedEnvUrl) || DEFAULT_DEV_API_BASE_URL;
 
 // Log the resolved API URL (both in dev and in browser console for debugging)
-const logMessage = `[client-api] API URL: ${API_URL} (env: ${resolvedEnvUrl || "NOT SET"})`;
+const logMessage = `[client-api] API URL: ${API_URL || "same-origin"} (env: ${resolvedEnvUrl || "NOT SET"})`;
 if (import.meta.env.DEV) {
   console.debug(logMessage);
 } else {
@@ -79,7 +68,7 @@ export class ApiError extends Error {
 }
 
 export function isApiConfigured() {
-  return Boolean(API_URL);
+  return true;
 }
 
 async function raw(path: string, init: RequestInit = {}): Promise<Response> {
@@ -94,7 +83,7 @@ async function raw(path: string, init: RequestInit = {}): Promise<Response> {
     if (error instanceof TypeError) {
       throw new ApiError(
         0,
-        `Unable to reach backend API at ${API_URL}${path}. Check that VITE_CLIENT_API_URL is set to your deployed API and that the backend is running. (${error.message})`,
+        `Unable to reach backend API at ${API_URL || "this site"}${path}. Check that the client API proxy and backend are running. (${error.message})`,
         null,
       );
     }

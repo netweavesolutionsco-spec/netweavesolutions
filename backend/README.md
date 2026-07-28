@@ -2,7 +2,7 @@
 
 Standalone Node.js service (Express + Supabase + JWT) powering the Client Portal
 of the Netweavesolutions website. This backend is now Supabase-based and is
-called over HTTPS from the Lovable frontend.
+called by same-origin proxy routes in the Lovable frontend.
 
 ## Stack
 
@@ -29,9 +29,9 @@ npm run dev
 - **Render** — New Web Service → root `backend/` → build `npm install` → start `npm start` → env vars.
 - **Fly.io** — `fly launch` inside `backend/`, then `fly secrets set …`.
 
-After deploy, copy the public URL and set it as `VITE_CLIENT_API_URL` in the
-Lovable frontend project (Project Settings → Environment Variables), e.g.
-`https://codenest-api.up.railway.app`.
+After deploy, copy the public URL and set it as `VITE_CLIENT_API_URL` (or
+`CLIENT_API_URL`) in the Lovable frontend project. The browser calls same-origin
+frontend routes such as `/auth/register`; those routes proxy to this backend.
 
 ### Render env vars
 
@@ -97,4 +97,3 @@ The refresh cookie is httpOnly, SameSite=None, Secure (configurable).
 `projectMessages`, `projectActivities`, `projectNotes`, `projectMeetings`,
 `notifications`, `payments`, `invoices` — so Phase 2 controllers can be added
 without further migrations.
-

@@ -18,40 +18,38 @@ app.set("trust proxy", 1);
 app.use(helmet());
 
 // -------------------- CORS --------------------
-const allowedOrigins = [
-  "https://netweavesolutions.tech",
-  "https://www.netweavesolutions.tech",
-  "https://netweavesolutions.vercel.app", // agar Vercel domain use karte ho
-  "http://localhost:8080",
-  "http://localhost:5173",
-];
-
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Postman / server-to-server requests
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      console.log("[CORS BLOCKED]", origin);
-      return callback(new Error("Not allowed by CORS"));
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: [
-      "Content-Type",
-      "Authorization",
-      "X-Requested-With",
-      "Accept",
-    ],
-  })
+const allowedOrigins = Array.from(
+  new Set([
+    ...env.FRONTEND_ORIGIN,
+    "https://netweavesolutions.tech",
+    "https://www.netweavesolutions.tech",
+    "https://netweavesolutions.vercel.app",
+    "http://localhost:8080",
+    "http://localhost:5173",
+  ]),
 );
 
+const corsOptions = {
+  origin(origin, callback) {
+    // Postman / server-to-server requests
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+
+    console.log("[CORS BLOCKED]", origin);
+    return callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+};
+
+app.use(cors(corsOptions));
+
 // Handle preflight requests
-app.options("*", cors());
+app.options("*", cors(corsOptions));
 
 // -------------------- Body Parser --------------------
 app.use(express.json({ limit: "1mb" }));

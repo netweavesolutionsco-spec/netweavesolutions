@@ -21,14 +21,6 @@ const PROFILE_COLUMNS = `
   updated_at
 `;
 
-const AUTH_COLUMNS = `
-  id,
-  email,
-  email_confirmed_at,
-  created_at,
-  updated_at
-`;
-
 function parseDate(value) {
   if (value === null || value === undefined) return null;
   return value instanceof Date ? value : new Date(value);
@@ -77,37 +69,27 @@ export function toSafeClient(client) {
 }
 
 async function fetchAuthUserByEmail(email) {
-  const { data, error } = await supabaseAdmin
-    .from("auth.users")
-    .select(AUTH_COLUMNS)
-    .eq("email", email.toLowerCase().trim())
-    .maybeSingle();
+  const normalizedEmail = email.toLowerCase().trim();
+  const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
 
   if (error) {
-    if (error.code === "PGRST116" || error.message?.includes("rows not found")) {
-      return null;
-    }
     throw error;
   }
 
-  return data;
+  return data?.users?.find((user) => user.email?.toLowerCase() === normalizedEmail) ?? null;
 }
 
 async function fetchAuthUserById(id) {
-  const { data, error } = await supabaseAdmin
-    .from("auth.users")
-    .select(AUTH_COLUMNS)
-    .eq("id", id)
-    .maybeSingle();
+  const { data, error } = await supabaseAdmin.auth.admin.getUserById(id);
 
   if (error) {
-    if (error.code === "PGRST116" || error.message?.includes("rows not found")) {
+    if (error.status === 404 || error.message?.includes("not found")) {
       return null;
     }
     throw error;
   }
 
-  return data;
+  return data?.user ?? null;
 }
 
 async function fetchProfileById(id) {
