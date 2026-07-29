@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GoogleAuthButton } from "@/components/client/google-auth-button";
+import { Logo } from "@/components/logo";
 import { useClientAuth } from "@/hooks/use-client-auth";
 import { cn } from "@/lib/utils";
 
@@ -95,6 +96,9 @@ function RegisterPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-16">
+      <Link to="/" aria-label="NetweaveSolutions" className="mb-6 flex justify-center">
+        <Logo />
+      </Link>
       <div className="rounded-2xl border border-border/60 bg-card/70 p-8 backdrop-blur">
         <h1 className="text-2xl font-semibold tracking-tight">Create your client account</h1>
         <p className="mt-1 text-sm text-muted-foreground">

@@ -24,6 +24,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { LogoMark } from "@/components/logo";
 import { useAdminUI } from "@/admin/context/AdminUIContext";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
@@ -92,9 +93,7 @@ export function AdminSidebar() {
           sidebarCollapsed && "justify-center px-2",
         )}
       >
-        <div className="grid h-9 w-9 place-items-center rounded-xl bg-linear-to-br from-(--brand) via-(--brand-3) to-(--brand-2) text-white shadow-lg">
-          <Sparkles className="h-5 w-5" />
-        </div>
+        <LogoMark className="md:h-9" />
         {!sidebarCollapsed && (
           <div className="min-w-0">
             <div className="truncate text-sm font-semibold">Netweavesolutions</div>

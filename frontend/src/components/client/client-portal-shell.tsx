@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useClientAuth } from "@/hooks/use-client-auth";
 import { cn } from "@/lib/utils";
+import { LogoMark } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 
 const NAV: ReadonlyArray<{
@@ -85,6 +86,9 @@ export function ClientPortalShell({ children, title }: { children: ReactNode; ti
         <aside className="lg:sticky lg:top-6 lg:h-[calc(100vh-3rem)] lg:w-64 lg:shrink-0">
           <div className="flex h-full flex-col rounded-xl border border-border/70 bg-card/80 shadow-soft backdrop-blur">
             <div className="border-b border-border/70 p-4">
+              <Link to="/client" aria-label="NetweaveSolutions" className="mb-3 inline-flex">
+                <LogoMark />
+              </Link>
               <div className="truncate text-sm font-semibold">{user.fullName}</div>
               <div className="mt-0.5 truncate text-xs text-muted-foreground">{user.email}</div>
             </div>

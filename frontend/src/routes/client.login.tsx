@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GoogleAuthButton } from "@/components/client/google-auth-button";
+import { Logo } from "@/components/logo";
 import { useClientAuth } from "@/hooks/use-client-auth";
 
 const search = z.object({ redirect: z.string().optional(), email: z.string().optional() }).catch({});
@@ -68,6 +69,9 @@ function LoginPage() {
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-6 py-16">
+      <Link to="/" aria-label="NetweaveSolutions" className="mb-6 inline-flex justify-center">
+        <Logo />
+      </Link>
       <div className="rounded-2xl border border-border/60 bg-card/70 p-8 backdrop-blur">
         <h1 className="text-2xl font-semibold tracking-tight">Client Login</h1>
         <p className="mt-1 text-sm text-muted-foreground">Access your projects and invoices.</p>
