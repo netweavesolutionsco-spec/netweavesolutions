@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { brand } from "@/data/brand";
+import { submitLead } from "@/lib/leads";
 
 const services = [
   "Website Development",
@@ -68,7 +69,8 @@ function Contact() {
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const form = new FormData(e.currentTarget);
+    const formEl = e.currentTarget;
+    const form = new FormData(formEl);
     const data = Object.fromEntries(form) as Record<string, string>;
     const parsed = schema.safeParse(data);
     if (!parsed.success) {
@@ -79,11 +81,16 @@ function Contact() {
     }
     setErrors({});
     setLoading(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setLoading(false);
-    setSuccess({ name: parsed.data.name, email: parsed.data.email });
-    fireConfetti();
-    (e.target as HTMLFormElement).reset();
+    try {
+      await submitLead({ ...parsed.data, company: "", source: "contact-page" });
+      setSuccess({ name: parsed.data.name, email: parsed.data.email });
+      fireConfetti();
+      formEl.reset();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not send your message.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const waLink = `https://wa.me/${brand.whatsapp}?text=${encodeURIComponent("Hi Netweavesolutions, I'd like to discuss a project.")}`;

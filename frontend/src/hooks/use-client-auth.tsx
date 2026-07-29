@@ -8,18 +8,29 @@ import {
   type ReactNode,
 } from "react";
 import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
 import { api, isApiConfigured, setAccessToken, type ClientUser } from "@/lib/client-api";
+import { supabase } from "@/integrations/supabase/client";
 
 export interface RegisterPayload {
   fullName: string;
   email: string;
   phone?: string;
+  countryCode?: string;
+  whatsapp?: string;
   companyName?: string;
+  website?: string;
+  industry?: string;
   country?: string;
+  state?: string;
+  city?: string;
+  address?: string;
+  gstNumber?: string;
   password: string;
   confirmPassword: string;
   referralCode?: string;
   acceptTerms: true;
+  newsletter?: boolean;
 }
 
 interface AuthState {
@@ -28,6 +39,9 @@ interface AuthState {
   configured: boolean;
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<{ message: string }>;
+  loginWithGoogle: () => Promise<void>;
+  completeOAuth: () => Promise<void>;
+  resendVerification: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   updateProfile: (updates: Partial<ClientUser>) => Promise<void>;
@@ -105,12 +119,21 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
       fullName: payload.fullName,
       email: payload.email,
       phone: payload.phone,
+      countryCode: payload.countryCode,
+      whatsapp: payload.whatsapp,
       companyName: payload.companyName,
+      website: payload.website,
+      industry: payload.industry,
       country: payload.country,
+      state: payload.state,
+      city: payload.city,
+      address: payload.address,
+      gstNumber: payload.gstNumber,
       password: payload.password,
       confirmPassword: payload.confirmPassword,
       referralCode: payload.referralCode,
       acceptTerms: payload.acceptTerms,
+      newsletter: payload.newsletter ?? false,
     });
 
     setAccessToken(null);
@@ -119,6 +142,47 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
     return {
       message: data.message ?? 'Account created successfully. You can sign in now.',
     };
+  }, []);
+
+  // Kicks off the Google OAuth redirect via Supabase. On return the browser
+  // lands on /client/oauth-callback, which calls completeOAuth() below.
+  const loginWithGoogle = useCallback(async () => {
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/client/oauth-callback`
+        : undefined;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo },
+    });
+    if (error) throw new Error(error.message);
+  }, []);
+
+  // Runs on /client/oauth-callback after Supabase completes the OAuth redirect.
+  // Hands the Supabase session tokens to our backend, which provisions the
+  // client record (reusing the same profiles/user_roles model) and returns our
+  // own access token. No second auth system — same portal session as password.
+  const completeOAuth = useCallback(async () => {
+    const { data, error } = await supabase.auth.getSession();
+    if (error || !data.session) {
+      throw new Error(error?.message ?? "Google sign-in did not complete.");
+    }
+    const synced = await api.post<{ accessToken?: string; client?: Partial<ClientUser> }>(
+      '/auth/oauth/sync',
+      {
+        accessToken: data.session.access_token,
+        refreshToken: data.session.refresh_token,
+      },
+    );
+    // Clear the client-side Supabase session; the portal session now lives in
+    // our own in-memory access token + httpOnly refresh cookie.
+    await supabase.auth.signOut().catch(() => {});
+    setAccessToken(synced.accessToken ?? null);
+    setUser(normalizeClientUser(synced.client ?? null));
+  }, []);
+
+  const resendVerification = useCallback(async (email: string) => {
+    await api.post('/auth/resend-verification', { email });
   }, []);
 
   const logout = useCallback(async () => {
@@ -177,6 +241,9 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
       configured,
       login,
       register,
+      loginWithGoogle,
+      completeOAuth,
+      resendVerification,
       logout,
       refreshUser,
       updateProfile,
@@ -190,6 +257,9 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
       configured,
       login,
       register,
+      loginWithGoogle,
+      completeOAuth,
+      resendVerification,
       logout,
       refreshUser,
       updateProfile,
@@ -215,6 +285,7 @@ export function useRequireClientAuth() {
     (onAuthed?: () => void) => {
       if (loading) return false;
       if (!user) {
+        toast.info("Please login or create an account to continue.");
         const redirect =
           typeof window !== "undefined" ? window.location.pathname + window.location.search : "/";
         navigate({ to: "/client/login", search: { redirect } as never });

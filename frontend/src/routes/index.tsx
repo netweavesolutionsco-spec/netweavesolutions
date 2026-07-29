@@ -9,6 +9,7 @@ import { TestimonialsSlider } from "@/components/home/testimonials";
 import { PricingSection } from "@/components/home/pricing-section";
 import { FaqSection } from "@/components/home/faq-section";
 import { ContactCta } from "@/components/home/contact-cta";
+import { ExpertAssistanceForm } from "@/components/home/expert-assistance-form";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -41,6 +42,7 @@ function Home() {
       <PricingSection compact />
       <FaqSection />
       <ContactCta />
+      <ExpertAssistanceForm />
     </>
   );
 }

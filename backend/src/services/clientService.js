@@ -5,6 +5,8 @@ const PROFILE_COLUMNS = `
   display_name,
   avatar_url,
   phone,
+  whatsapp,
+  country_code,
   company_name,
   country,
   email,
@@ -17,6 +19,11 @@ const PROFILE_COLUMNS = `
   website,
   linkedin,
   timezone,
+  company_logo_url,
+  newsletter_opt_in,
+  status,
+  login_count,
+  last_login,
   created_at,
   updated_at
 `;
@@ -42,6 +49,8 @@ function normalizeClientRecord(authUser, profile, roles = []) {
     emailVerified: Boolean(authUser?.email_confirmed_at),
     fullName: profile?.display_name ?? "",
     phone: profile?.phone ?? "",
+    whatsapp: profile?.whatsapp ?? "",
+    countryCode: profile?.country_code ?? "",
     companyName: profile?.company_name ?? "",
     country: profile?.country ?? "",
     profilePhotoUrl: profile?.avatar_url ?? "",
@@ -55,8 +64,11 @@ function normalizeClientRecord(authUser, profile, roles = []) {
     website: profile?.website ?? "",
     linkedin: profile?.linkedin ?? "",
     timezone: profile?.timezone ?? "",
+    newsletterOptIn: Boolean(profile?.newsletter_opt_in),
+    loginCount: profile?.login_count ?? 0,
+    lastLogin: parseDate(profile?.last_login),
     role,
-    status: "active",
+    status: profile?.status ?? "active",
     createdAt: parseDate(profile?.created_at ?? authUser?.created_at),
     updatedAt: parseDate(profile?.updated_at ?? authUser?.updated_at),
   };
@@ -155,6 +167,8 @@ export async function createClient(clientData) {
       display_name: clientData.fullName,
       full_name: clientData.fullName,
       phone: clientData.phone ?? "",
+      whatsapp: clientData.whatsapp ?? "",
+      country_code: clientData.countryCode ?? "",
       company_name: clientData.companyName ?? "",
       country: clientData.country ?? "",
       avatar_url: clientData.profilePhotoUrl ?? "",
@@ -177,6 +191,8 @@ export async function createClient(clientData) {
     display_name: clientData.fullName,
     avatar_url: clientData.profilePhotoUrl,
     phone: clientData.phone,
+    whatsapp: clientData.whatsapp,
+    country_code: clientData.countryCode,
     company_name: clientData.companyName,
     country: clientData.country,
     email,
@@ -189,6 +205,7 @@ export async function createClient(clientData) {
     website: clientData.website,
     linkedin: clientData.linkedin,
     timezone: clientData.timezone,
+    newsletter_opt_in: clientData.newsletterOptIn,
   });
 
   const { error: profileError } = await supabaseAdmin
@@ -223,6 +240,8 @@ export async function updateClient(id, updates) {
   const profilePayload = cleanPayload({
     display_name: updates.fullName,
     phone: updates.phone,
+    whatsapp: updates.whatsapp,
+    country_code: updates.countryCode,
     company_name: updates.companyName,
     country: updates.country,
     email: updates.email?.toLowerCase().trim(),
@@ -237,6 +256,8 @@ export async function updateClient(id, updates) {
     timezone: updates.timezone,
     avatar_url: updates.profilePhotoUrl,
     company_logo_url: updates.companyLogoUrl,
+    newsletter_opt_in: updates.newsletterOptIn,
+    status: updates.status,
   });
 
   if (Object.keys(profilePayload).length) {
@@ -260,4 +281,59 @@ export async function updateClient(id, updates) {
   }
 
   return fetchClientByUserId(id);
+}
+
+/**
+ * Records a successful login: bumps login_count and stamps last_login.
+ * Best-effort — never throws, so it can't block a valid sign-in.
+ */
+export async function recordLogin(id) {
+  try {
+    const { data } = await supabaseAdmin
+      .from("profiles")
+      .select("login_count")
+      .eq("id", id)
+      .maybeSingle();
+    const next = (data?.login_count ?? 0) + 1;
+    await supabaseAdmin
+      .from("profiles")
+      .update({ login_count: next, last_login: new Date().toISOString() })
+      .eq("id", id);
+  } catch (error) {
+    console.warn("[clientService] recordLogin failed:", error?.message ?? error);
+  }
+}
+
+/**
+ * Ensures a `profiles` row and a `user_roles` row exist for an already
+ * authenticated Supabase user (used by the Google OAuth sync flow). Reuses
+ * the same profile/role model as password signup — it does NOT create a
+ * second identity system. Safe to call repeatedly (idempotent upsert).
+ */
+export async function ensureClientForAuthUser(authUser, { role = "customer" } = {}) {
+  if (!authUser?.id) throw new Error("Missing auth user");
+
+  const meta = authUser.user_metadata ?? {};
+  const profilePayload = cleanPayload({
+    id: authUser.id,
+    email: authUser.email?.toLowerCase().trim(),
+    display_name: meta.full_name || meta.name || meta.display_name || authUser.email,
+    avatar_url: meta.avatar_url || meta.picture,
+  });
+
+  const { error: profileError } = await supabaseAdmin
+    .from("profiles")
+    .upsert(profilePayload, { onConflict: "id" });
+  if (profileError) throw profileError;
+
+  const { data: existingRoles } = await supabaseAdmin
+    .from("user_roles")
+    .select("id")
+    .eq("user_id", authUser.id)
+    .limit(1);
+  if (!existingRoles?.length) {
+    await supabaseAdmin.from("user_roles").insert({ user_id: authUser.id, role });
+  }
+
+  return fetchClientByUserId(authUser.id);
 }

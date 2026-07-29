@@ -44,4 +44,21 @@ export const env = {
     from: process.env.SMTP_FROM || "Netweavesolutions <noreply@example.com>",
   },
   APPROVAL_EMAIL: process.env.APPROVAL_EMAIL || "netweavesolutions.co@gmail.com",
+  // Where new website enquiries are emailed. Falls back to the approval inbox.
+  LEAD_NOTIFY_EMAIL:
+    process.env.LEAD_NOTIFY_EMAIL ||
+    process.env.APPROVAL_EMAIL ||
+    "netweavesolutions.co@gmail.com",
+  WHATSAPP: {
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || "",
+    accessToken: process.env.WHATSAPP_ACCESS_TOKEN || "",
+    // Comma-separated list of recipients in E.164 without '+', e.g. 918434554873
+    to: (process.env.WHATSAPP_TO || "")
+      .split(",")
+      .map((s) => s.trim().replace(/^\+/, ""))
+      .filter(Boolean),
+    templateName: process.env.WHATSAPP_TEMPLATE_NAME || "new_lead_alert",
+    templateLang: process.env.WHATSAPP_TEMPLATE_LANG || "en",
+    useText: process.env.WHATSAPP_USE_TEXT === "true",
+  },
 };

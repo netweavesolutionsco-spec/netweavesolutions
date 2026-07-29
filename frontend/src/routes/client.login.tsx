@@ -5,8 +5,8 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { GoogleAuthButton } from "@/components/client/google-auth-button";
 import { useClientAuth } from "@/hooks/use-client-auth";
-import { ApiError } from "@/lib/client-api";
 
 const search = z.object({ redirect: z.string().optional(), email: z.string().optional() }).catch({});
 
@@ -26,13 +26,14 @@ export const Route = createFileRoute("/client/login")({
 });
 
 function LoginPage() {
-  const { user, login, configured, loading } = useClientAuth();
+  const { user, login, configured, loading, resendVerification } = useClientAuth();
   const { redirect, email: emailParam } = useSearch({ from: "/client/login" });
   const navigate = useNavigate();
   const [email, setEmail] = useState(emailParam || "");
   const [password, setPassword] = useState("");
   const [remember, setRemember] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     if (!loading && user) navigate({ to: redirect || "/client", replace: true });
@@ -49,6 +50,19 @@ function LoginPage() {
       toast.error(e instanceof Error ? e.message : "Login failed");
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const onResend = async () => {
+    if (!email) return toast.error("Enter your email first, then resend.");
+    setResending(true);
+    try {
+      await resendVerification(email);
+      toast.success("If that email needs verification, we've sent a new link.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not resend right now.");
+    } finally {
+      setResending(false);
     }
   };
 
@@ -101,7 +115,26 @@ function LoginPage() {
           <Button type="submit" className="w-full" disabled={submitting || !configured}>
             {submitting ? "Signing in…" : "Sign in"}
           </Button>
+          <div className="text-center text-xs text-muted-foreground">
+            Didn&apos;t get the verification email?{" "}
+            <button
+              type="button"
+              className="text-primary hover:underline disabled:opacity-60"
+              onClick={onResend}
+              disabled={resending || !configured}
+            >
+              {resending ? "Sending…" : "Resend it"}
+            </button>
+          </div>
         </form>
+
+        <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
+          <span className="h-px flex-1 bg-border" />
+          or continue with
+          <span className="h-px flex-1 bg-border" />
+        </div>
+        <GoogleAuthButton />
+
         <p className="mt-6 text-center text-sm text-muted-foreground">
           New client?{" "}
           <Link to="/client/register" className="text-primary hover:underline">

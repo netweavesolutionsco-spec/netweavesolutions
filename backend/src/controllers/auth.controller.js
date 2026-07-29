@@ -7,22 +7,46 @@ import {
   findClientByEmail,
   findClientById,
   updateClient,
+  recordLogin,
+  ensureClientForAuthUser,
   toSafeClient,
 } from "../services/clientService.js";
 import { recordActivity } from "../services/portal.service.js";
 
 // --- Schemas ---
+// Strong password: min 8, and at least one uppercase, lowercase, number and
+// special character. Enforced on the server so the API never trusts the client.
+const strongPassword = z
+  .string()
+  .min(8, "Password must be at least 8 characters")
+  .max(200)
+  .regex(/[A-Z]/, "Password needs an uppercase letter")
+  .regex(/[a-z]/, "Password needs a lowercase letter")
+  .regex(/[0-9]/, "Password needs a number")
+  .regex(/[^A-Za-z0-9]/, "Password needs a special character");
+
+const optionalStr = (max) => z.string().trim().max(max).optional().or(z.literal(""));
+
 export const registerSchema = z
   .object({
     fullName: z.string().trim().min(2).max(100),
     email: z.string().trim().toLowerCase().email().max(255),
-    phone: z.string().trim().max(30).optional(),
-    companyName: z.string().trim().max(200).optional(),
-    country: z.string().trim().max(80).optional(),
-    password: z.string().min(8).max(200),
-    confirmPassword: z.string().min(8).max(200),
-    referralCode: z.string().trim().max(50).optional(),
+    phone: optionalStr(30),
+    countryCode: optionalStr(8),
+    whatsapp: optionalStr(30),
+    companyName: optionalStr(200),
+    website: optionalStr(200),
+    industry: optionalStr(120),
+    country: optionalStr(80),
+    state: optionalStr(80),
+    city: optionalStr(80),
+    address: optionalStr(300),
+    gstNumber: optionalStr(40),
+    password: strongPassword,
+    confirmPassword: z.string().min(1).max(200),
+    referralCode: optionalStr(50),
     acceptTerms: z.literal(true, { errorMap: () => ({ message: "You must accept terms" }) }),
+    newsletter: z.boolean().optional(),
   })
   .refine((v) => v.password === v.confirmPassword, {
     message: "Passwords do not match",
@@ -38,13 +62,20 @@ export const emailOnly = z.object({ email: z.string().trim().toLowerCase().email
 export const verifyEmailSchema = z.object({ token: z.string().min(10) });
 export const resetPasswordSchema = z.object({
   token: z.string().min(10),
-  password: z.string().min(8).max(200),
+  password: strongPassword,
 });
 export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
-  newPassword: z.string().min(8).max(200),
+  newPassword: strongPassword,
 });
 export const otpSchema = z.object({ otp: z.string().length(6) });
+// Google OAuth sync: the frontend completes the Supabase OAuth redirect,
+// then hands the resulting session tokens to the backend so we can provision
+// the client record and issue our own refresh cookie (same model as login).
+export const oauthSyncSchema = z.object({
+  accessToken: z.string().min(10),
+  refreshToken: z.string().min(10).optional(),
+});
 
 // --- Helpers ---
 async function issueSession(res, client, session) {
@@ -84,16 +115,46 @@ async function auditAuth(clientId, action, description, metadata = {}) {
 
 // --- Handlers ---
 export async function register(req, res) {
-  const { fullName, email, phone, companyName, country, password, referralCode } = req.body;
+  const {
+    fullName,
+    email,
+    phone,
+    countryCode,
+    whatsapp,
+    companyName,
+    website,
+    industry,
+    country,
+    state,
+    city,
+    address,
+    gstNumber,
+    password,
+    referralCode,
+    newsletter,
+  } = req.body;
+
+  const profileFields = {
+    fullName,
+    phone,
+    countryCode,
+    whatsapp,
+    companyName,
+    website,
+    industry,
+    country,
+    state,
+    city,
+    address,
+    gstNumber,
+    newsletterOptIn: Boolean(newsletter),
+  };
 
   const existing = await findClientByEmail(email);
   if (existing) {
     if (!existing.emailVerified) {
       const client = await updateClient(existing.id, {
-        fullName,
-        phone,
-        companyName,
-        country,
+        ...profileFields,
         password,
         emailVerified: true,
       });
@@ -109,16 +170,13 @@ export async function register(req, res) {
   }
 
   const client = await createClient({
-    fullName,
+    ...profileFields,
     email,
-    phone,
-    companyName,
-    country,
     referralCode,
     password,
     acceptedTerms: true,
     emailVerified: true,
-    role: "viewer",
+    role: "customer",
   });
 
   return res.status(201).json({
@@ -143,6 +201,7 @@ export async function login(req, res) {
   }
 
   const accessToken = await issueSession(res, client, data.session);
+  await recordLogin(client.id);
   await auditAuth(client.id, "login", "Client logged in", { email: client.email });
   return res.json({ ok: true, accessToken, client: toSafeClient(client) });
 }
@@ -268,4 +327,53 @@ export async function verifyOtp(req, res) {
   }
 
   return res.json({ ok: true, accessToken: data.session.access_token });
+}
+
+// Public, pre-login: re-sends the signup confirmation email. Always returns a
+// generic success so it can't be used to probe which emails are registered.
+export async function resendVerification(req, res) {
+  const { email } = req.body;
+  try {
+    await supabaseAdmin.auth.resend({
+      type: "signup",
+      email,
+      options: { emailRedirectTo: `${env.FRONTEND_PRIMARY}/client/verify-email` },
+    });
+  } catch (error) {
+    // Supabase errors when the account is already confirmed / doesn't exist.
+    // That's expected here — we still return a generic success below.
+    console.warn("[auth] resendVerification:", error?.message ?? error);
+  }
+  return res.json({
+    ok: true,
+    message: "If that email needs verification, we've sent a new link.",
+  });
+}
+
+// Public: completes Google (or any Supabase OAuth) sign-in. The frontend runs
+// the Supabase OAuth redirect, then posts the resulting session tokens here.
+// We verify the token server-side, provision the client via the SAME profile/
+// role model as password signup, then issue our own refresh cookie so the rest
+// of the portal keeps working exactly as it does for email/password users.
+export async function oauthSync(req, res) {
+  const { accessToken, refreshToken } = req.body;
+
+  const { data, error } = await supabaseAdmin.auth.getUser(accessToken);
+  if (error || !data.user) {
+    return res.status(401).json({ error: "Invalid or expired OAuth session" });
+  }
+
+  const client = await ensureClientForAuthUser(data.user, { role: "customer" });
+  if (!client) return res.status(500).json({ error: "Could not provision account" });
+  if (client.status && client.status !== "active") {
+    return res.status(403).json({ error: "Account suspended" });
+  }
+
+  if (refreshToken) {
+    res.cookie(REFRESH_COOKIE, refreshToken, refreshCookieOptions());
+  }
+  await recordLogin(client.id);
+  await auditAuth(client.id, "login", "Client logged in with Google", { email: client.email });
+
+  return res.json({ ok: true, accessToken, client: toSafeClient(client) });
 }

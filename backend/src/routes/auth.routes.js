@@ -21,6 +21,13 @@ r.post("/refresh", asyncHandler(c.refresh));
 r.get("/me", asyncHandler(requireAuth), asyncHandler(c.me));
 
 r.post("/verify-email", authLimiter, validate(c.verifyEmailSchema), asyncHandler(c.verifyEmail));
+r.post(
+  "/resend-verification",
+  authLimiter,
+  validate(c.emailOnly),
+  asyncHandler(c.resendVerification),
+);
+r.post("/oauth/sync", authLimiter, validate(c.oauthSyncSchema), asyncHandler(c.oauthSync));
 r.post("/forgot-password", authLimiter, validate(c.emailOnly), asyncHandler(c.forgotPassword));
 r.post("/reset-password", authLimiter, validate(c.resetPasswordSchema), asyncHandler(c.resetPassword));
 r.post(

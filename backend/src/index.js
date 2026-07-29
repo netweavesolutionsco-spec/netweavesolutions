@@ -9,6 +9,7 @@ import { env } from "./config/env.js";
 import authRoutes from "./routes/auth.routes.js";
 import profileRoutes from "./routes/profile.routes.js";
 import portalRoutes from "./routes/portal.routes.js";
+import leadsRoutes from "./routes/leads.routes.js";
 import { errorHandler, notFound } from "./middleware/error.js";
 
 const app = express();
@@ -78,6 +79,7 @@ app.get("/healthz", (_req, res) => {
 app.use("/auth", authRoutes);
 app.use("/profile", profileRoutes);
 app.use("/portal", portalRoutes);
+app.use("/leads", leadsRoutes);
 
 // -------------------- Error Handling --------------------
 app.use(notFound);

@@ -1,11 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { GoogleAuthButton } from "@/components/client/google-auth-button";
 import { useClientAuth } from "@/hooks/use-client-auth";
-import { ApiError } from "@/lib/client-api";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/client/register")({
   head: () => ({
@@ -22,6 +23,25 @@ export const Route = createFileRoute("/client/register")({
   component: RegisterPage,
 });
 
+// Mirrors the backend's strongPassword rule so the UI can guide the user
+// before they submit (the server still enforces it authoritatively).
+const passwordChecks = [
+  { label: "At least 8 characters", test: (v: string) => v.length >= 8 },
+  { label: "One uppercase letter", test: (v: string) => /[A-Z]/.test(v) },
+  { label: "One lowercase letter", test: (v: string) => /[a-z]/.test(v) },
+  { label: "One number", test: (v: string) => /[0-9]/.test(v) },
+  { label: "One special character", test: (v: string) => /[^A-Za-z0-9]/.test(v) },
+];
+
+const STRENGTH_LABELS = ["Very weak", "Weak", "Fair", "Good", "Strong"];
+const STRENGTH_COLORS = [
+  "bg-destructive",
+  "bg-destructive",
+  "bg-amber-500",
+  "bg-yellow-500",
+  "bg-emerald-500",
+];
+
 function RegisterPage() {
   const { register: registerFn, configured } = useClientAuth();
   const navigate = useNavigate();
@@ -29,20 +49,37 @@ function RegisterPage() {
     fullName: "",
     email: "",
     phone: "",
+    countryCode: "",
+    whatsapp: "",
     companyName: "",
+    website: "",
+    industry: "",
     country: "",
+    state: "",
+    city: "",
+    address: "",
+    gstNumber: "",
     password: "",
     confirmPassword: "",
     referralCode: "",
     acceptTerms: false,
+    newsletter: false,
   });
   const [submitting, setSubmitting] = useState(false);
   const set = <K extends keyof typeof form>(k: K, v: (typeof form)[K]) =>
     setForm((f) => ({ ...f, [k]: v }));
 
+  const passed = useMemo(
+    () => passwordChecks.filter((c) => c.test(form.password)).length,
+    [form.password],
+  );
+  const passwordOk = passed === passwordChecks.length;
+  const confirmMismatch = form.confirmPassword.length > 0 && form.password !== form.confirmPassword;
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.acceptTerms) return toast.error("Please accept the terms");
+    if (!passwordOk) return toast.error("Please choose a stronger password");
     if (form.password !== form.confirmPassword) return toast.error("Passwords do not match");
     setSubmitting(true);
     try {
@@ -57,7 +94,7 @@ function RegisterPage() {
   };
 
   return (
-    <div className="mx-auto max-w-xl px-6 py-16">
+    <div className="mx-auto max-w-2xl px-6 py-16">
       <div className="rounded-2xl border border-border/60 bg-card/70 p-8 backdrop-blur">
         <h1 className="text-2xl font-semibold tracking-tight">Create your client account</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -68,9 +105,19 @@ function RegisterPage() {
             Client API not configured. Set VITE_CLIENT_API_URL to your deployed API.
           </p>
         )}
-        <form className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2" onSubmit={onSubmit}>
+
+        <div className="mt-6">
+          <GoogleAuthButton label="Sign up with Google" />
+          <div className="my-6 flex items-center gap-3 text-xs text-muted-foreground">
+            <span className="h-px flex-1 bg-border" />
+            or register with email
+            <span className="h-px flex-1 bg-border" />
+          </div>
+        </div>
+
+        <form className="grid grid-cols-1 gap-4 sm:grid-cols-2" onSubmit={onSubmit}>
           <div className="sm:col-span-2">
-            <Label htmlFor="fullName">Full name</Label>
+            <Label htmlFor="fullName">Full name *</Label>
             <Input
               id="fullName"
               required
@@ -79,18 +126,38 @@ function RegisterPage() {
             />
           </div>
           <div>
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Email *</Label>
             <Input
               id="email"
               type="email"
+              autoComplete="email"
               required
               value={form.email}
               onChange={(e) => set("email", e.target.value)}
             />
           </div>
+          <div className="grid grid-cols-[90px_1fr] gap-2">
+            <div>
+              <Label htmlFor="countryCode">Code</Label>
+              <Input
+                id="countryCode"
+                placeholder="+91"
+                value={form.countryCode}
+                onChange={(e) => set("countryCode", e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="phone">Phone</Label>
+              <Input id="phone" value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+            </div>
+          </div>
           <div>
-            <Label htmlFor="phone">Phone</Label>
-            <Input id="phone" value={form.phone} onChange={(e) => set("phone", e.target.value)} />
+            <Label htmlFor="whatsapp">WhatsApp number</Label>
+            <Input
+              id="whatsapp"
+              value={form.whatsapp}
+              onChange={(e) => set("whatsapp", e.target.value)}
+            />
           </div>
           <div>
             <Label htmlFor="companyName">Company</Label>
@@ -98,6 +165,23 @@ function RegisterPage() {
               id="companyName"
               value={form.companyName}
               onChange={(e) => set("companyName", e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="website">Website</Label>
+            <Input
+              id="website"
+              placeholder="https://"
+              value={form.website}
+              onChange={(e) => set("website", e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="industry">Industry</Label>
+            <Input
+              id="industry"
+              value={form.industry}
+              onChange={(e) => set("industry", e.target.value)}
             />
           </div>
           <div>
@@ -109,35 +193,97 @@ function RegisterPage() {
             />
           </div>
           <div>
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="state">State</Label>
+            <Input id="state" value={form.state} onChange={(e) => set("state", e.target.value)} />
+          </div>
+          <div>
+            <Label htmlFor="city">City</Label>
+            <Input id="city" value={form.city} onChange={(e) => set("city", e.target.value)} />
+          </div>
+          <div className="sm:col-span-2">
+            <Label htmlFor="address">Address</Label>
             <Input
-              id="password"
-              type="password"
-              required
-              minLength={8}
-              value={form.password}
-              onChange={(e) => set("password", e.target.value)}
+              id="address"
+              value={form.address}
+              onChange={(e) => set("address", e.target.value)}
             />
           </div>
           <div>
-            <Label htmlFor="confirmPassword">Confirm password</Label>
+            <Label htmlFor="gstNumber">GST number</Label>
             <Input
-              id="confirmPassword"
-              type="password"
-              required
-              minLength={8}
-              value={form.confirmPassword}
-              onChange={(e) => set("confirmPassword", e.target.value)}
+              id="gstNumber"
+              value={form.gstNumber}
+              onChange={(e) => set("gstNumber", e.target.value)}
             />
           </div>
-          <div className="sm:col-span-2">
-            <Label htmlFor="referralCode">Referral code (optional)</Label>
+          <div>
+            <Label htmlFor="referralCode">Referral code</Label>
             <Input
               id="referralCode"
               value={form.referralCode}
               onChange={(e) => set("referralCode", e.target.value)}
             />
           </div>
+
+          <div className="sm:col-span-2">
+            <Label htmlFor="password">Password *</Label>
+            <Input
+              id="password"
+              type="password"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              value={form.password}
+              onChange={(e) => set("password", e.target.value)}
+            />
+            {form.password.length > 0 && (
+              <div className="mt-2 space-y-2">
+                <div className="flex gap-1">
+                  {Array.from({ length: passwordChecks.length }).map((_, i) => (
+                    <span
+                      key={i}
+                      className={cn(
+                        "h-1.5 flex-1 rounded-full transition-colors",
+                        i < passed ? STRENGTH_COLORS[Math.max(0, passed - 1)] : "bg-border",
+                      )}
+                    />
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Strength: {STRENGTH_LABELS[Math.max(0, passed - 1)] ?? "Very weak"}
+                </p>
+                <ul className="grid grid-cols-1 gap-1 text-xs sm:grid-cols-2">
+                  {passwordChecks.map((c) => {
+                    const ok = c.test(form.password);
+                    return (
+                      <li
+                        key={c.label}
+                        className={cn(ok ? "text-emerald-600" : "text-muted-foreground")}
+                      >
+                        {ok ? "✓" : "○"} {c.label}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+          <div className="sm:col-span-2">
+            <Label htmlFor="confirmPassword">Confirm password *</Label>
+            <Input
+              id="confirmPassword"
+              type="password"
+              autoComplete="new-password"
+              required
+              minLength={8}
+              value={form.confirmPassword}
+              onChange={(e) => set("confirmPassword", e.target.value)}
+            />
+            {confirmMismatch && (
+              <p className="mt-1 text-xs text-destructive">Passwords do not match.</p>
+            )}
+          </div>
+
           <label className="sm:col-span-2 flex items-start gap-2 text-sm text-muted-foreground">
             <input
               type="checkbox"
@@ -145,10 +291,24 @@ function RegisterPage() {
               checked={form.acceptTerms}
               onChange={(e) => set("acceptTerms", e.target.checked)}
             />
-            <span>I accept the Terms of Service and Privacy Policy.</span>
+            <span>I accept the Terms of Service and Privacy Policy. *</span>
           </label>
+          <label className="sm:col-span-2 flex items-start gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              className="mt-1"
+              checked={form.newsletter}
+              onChange={(e) => set("newsletter", e.target.checked)}
+            />
+            <span>Send me occasional product updates and offers.</span>
+          </label>
+
           <div className="sm:col-span-2">
-            <Button type="submit" className="w-full" disabled={submitting || !configured}>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={submitting || !configured || !passwordOk || !form.acceptTerms}
+            >
               {submitting ? "Creating account…" : "Create account"}
             </Button>
           </div>
@@ -163,4 +323,3 @@ function RegisterPage() {
     </div>
   );
 }
-

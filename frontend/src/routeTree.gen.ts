@@ -16,6 +16,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as CareersRouteImport } from './routes/careers'
 import { Route as ContactRouteImport } from './routes/contact'
+import { Route as LeadsRouteImport } from './routes/leads'
 import { Route as PortfolioRouteImport } from './routes/portfolio'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -52,6 +53,7 @@ import { Route as ClientLoginRouteImport } from './routes/client.login'
 import { Route as ClientMeetingsRouteImport } from './routes/client.meetings'
 import { Route as ClientMessagesRouteImport } from './routes/client.messages'
 import { Route as ClientNotificationsRouteImport } from './routes/client.notifications'
+import { Route as ClientOauthCallbackRouteImport } from './routes/client.oauth-callback'
 import { Route as ClientPaymentsRouteImport } from './routes/client.payments'
 import { Route as ClientProfileRouteImport } from './routes/client.profile'
 import { Route as ClientProjectsRouteImport } from './routes/client.projects'
@@ -98,6 +100,11 @@ const CareersRoute = CareersRouteImport.update({
 const ContactRoute = ContactRouteImport.update({
   id: '/contact',
   path: '/contact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LeadsRoute = LeadsRouteImport.update({
+  id: '/leads',
+  path: '/leads',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PortfolioRoute = PortfolioRouteImport.update({
@@ -280,6 +287,11 @@ const ClientNotificationsRoute = ClientNotificationsRouteImport.update({
   path: '/client/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClientOauthCallbackRoute = ClientOauthCallbackRouteImport.update({
+  id: '/client/oauth-callback',
+  path: '/client/oauth-callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClientPaymentsRoute = ClientPaymentsRouteImport.update({
   id: '/client/payments',
   path: '/client/payments',
@@ -349,6 +361,7 @@ export interface FileRoutesByFullPath {
   '/blog': typeof BlogRouteWithChildren
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
+  '/leads': typeof LeadsRoute
   '/portfolio': typeof PortfolioRoute
   '/pricing': typeof PricingRoute
   '/profile': typeof ProfileRoute
@@ -383,6 +396,7 @@ export interface FileRoutesByFullPath {
   '/client/meetings': typeof ClientMeetingsRoute
   '/client/messages': typeof ClientMessagesRoute
   '/client/notifications': typeof ClientNotificationsRoute
+  '/client/oauth-callback': typeof ClientOauthCallbackRoute
   '/client/payments': typeof ClientPaymentsRoute
   '/client/profile': typeof ClientProfileRoute
   '/client/projects': typeof ClientProjectsRouteWithChildren
@@ -405,6 +419,7 @@ export interface FileRoutesByTo {
   '/blog': typeof BlogRouteWithChildren
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
+  '/leads': typeof LeadsRoute
   '/portfolio': typeof PortfolioRoute
   '/pricing': typeof PricingRoute
   '/profile': typeof ProfileRoute
@@ -439,6 +454,7 @@ export interface FileRoutesByTo {
   '/client/meetings': typeof ClientMeetingsRoute
   '/client/messages': typeof ClientMessagesRoute
   '/client/notifications': typeof ClientNotificationsRoute
+  '/client/oauth-callback': typeof ClientOauthCallbackRoute
   '/client/payments': typeof ClientPaymentsRoute
   '/client/profile': typeof ClientProfileRoute
   '/client/projects': typeof ClientProjectsRouteWithChildren
@@ -463,6 +479,7 @@ export interface FileRoutesById {
   '/blog': typeof BlogRouteWithChildren
   '/careers': typeof CareersRoute
   '/contact': typeof ContactRoute
+  '/leads': typeof LeadsRoute
   '/portfolio': typeof PortfolioRoute
   '/pricing': typeof PricingRoute
   '/profile': typeof ProfileRoute
@@ -497,6 +514,7 @@ export interface FileRoutesById {
   '/client/meetings': typeof ClientMeetingsRoute
   '/client/messages': typeof ClientMessagesRoute
   '/client/notifications': typeof ClientNotificationsRoute
+  '/client/oauth-callback': typeof ClientOauthCallbackRoute
   '/client/payments': typeof ClientPaymentsRoute
   '/client/profile': typeof ClientProfileRoute
   '/client/projects': typeof ClientProjectsRouteWithChildren
@@ -522,6 +540,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/careers'
     | '/contact'
+    | '/leads'
     | '/portfolio'
     | '/pricing'
     | '/profile'
@@ -556,6 +575,7 @@ export interface FileRouteTypes {
     | '/client/meetings'
     | '/client/messages'
     | '/client/notifications'
+    | '/client/oauth-callback'
     | '/client/payments'
     | '/client/profile'
     | '/client/projects'
@@ -578,6 +598,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/careers'
     | '/contact'
+    | '/leads'
     | '/portfolio'
     | '/pricing'
     | '/profile'
@@ -612,6 +633,7 @@ export interface FileRouteTypes {
     | '/client/meetings'
     | '/client/messages'
     | '/client/notifications'
+    | '/client/oauth-callback'
     | '/client/payments'
     | '/client/profile'
     | '/client/projects'
@@ -635,6 +657,7 @@ export interface FileRouteTypes {
     | '/blog'
     | '/careers'
     | '/contact'
+    | '/leads'
     | '/portfolio'
     | '/pricing'
     | '/profile'
@@ -669,6 +692,7 @@ export interface FileRouteTypes {
     | '/client/meetings'
     | '/client/messages'
     | '/client/notifications'
+    | '/client/oauth-callback'
     | '/client/payments'
     | '/client/profile'
     | '/client/projects'
@@ -693,6 +717,7 @@ export interface RootRouteChildren {
   BlogRoute: typeof BlogRouteWithChildren
   CareersRoute: typeof CareersRoute
   ContactRoute: typeof ContactRoute
+  LeadsRoute: typeof LeadsRoute
   PortfolioRoute: typeof PortfolioRoute
   PricingRoute: typeof PricingRoute
   ProfileRoute: typeof ProfileRoute
@@ -707,6 +732,7 @@ export interface RootRouteChildren {
   ClientMeetingsRoute: typeof ClientMeetingsRoute
   ClientMessagesRoute: typeof ClientMessagesRoute
   ClientNotificationsRoute: typeof ClientNotificationsRoute
+  ClientOauthCallbackRoute: typeof ClientOauthCallbackRoute
   ClientPaymentsRoute: typeof ClientPaymentsRoute
   ClientProfileRoute: typeof ClientProfileRoute
   ClientProjectsRoute: typeof ClientProjectsRouteWithChildren
@@ -769,6 +795,13 @@ declare module '@tanstack/react-router' {
       path: '/contact'
       fullPath: '/contact'
       preLoaderRoute: typeof ContactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/leads': {
+      id: '/leads'
+      path: '/leads'
+      fullPath: '/leads'
+      preLoaderRoute: typeof LeadsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/portfolio': {
@@ -1023,6 +1056,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClientNotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/client/oauth-callback': {
+      id: '/client/oauth-callback'
+      path: '/client/oauth-callback'
+      fullPath: '/client/oauth-callback'
+      preLoaderRoute: typeof ClientOauthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/client/payments': {
       id: '/client/payments'
       path: '/client/payments'
@@ -1198,6 +1238,7 @@ const rootRouteChildren: RootRouteChildren = {
   BlogRoute: BlogRouteWithChildren,
   CareersRoute: CareersRoute,
   ContactRoute: ContactRoute,
+  LeadsRoute: LeadsRoute,
   PortfolioRoute: PortfolioRoute,
   PricingRoute: PricingRoute,
   ProfileRoute: ProfileRoute,
@@ -1212,6 +1253,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClientMeetingsRoute: ClientMeetingsRoute,
   ClientMessagesRoute: ClientMessagesRoute,
   ClientNotificationsRoute: ClientNotificationsRoute,
+  ClientOauthCallbackRoute: ClientOauthCallbackRoute,
   ClientPaymentsRoute: ClientPaymentsRoute,
   ClientProfileRoute: ClientProfileRoute,
   ClientProjectsRoute: ClientProjectsRouteWithChildren,
