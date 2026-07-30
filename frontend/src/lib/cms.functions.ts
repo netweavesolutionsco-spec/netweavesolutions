@@ -68,11 +68,17 @@ export const saveDraftSettings = createServerFn({ method: "POST" })
   .validator((input: unknown) => settingsSchema.parse(input))
   .handler(async ({ data, context }) => {
     const sb = context.supabase as unknown as LooseSupabase;
-    const { error } = await sb
+    // Upsert (not update): if the singleton row is missing the write must
+    // create it, otherwise `.update().eq()` silently affects 0 rows and the
+    // draft is lost on reload. `.select()` lets us confirm a row was written.
+    const { data: rows, error } = await sb
       .from("site_content")
-      .update({ data, updated_by: context.userId })
-      .eq("id", "main");
+      .upsert({ id: "main", data, updated_by: context.userId }, { onConflict: "id" })
+      .select("id");
     if (error) throw new Error(error.message);
+    if (!rows || rows.length === 0) {
+      throw new Error("Draft not saved: no row was written. Check admin permissions.");
+    }
     return { ok: true };
   });
 
@@ -81,10 +87,18 @@ export const publishSettings = createServerFn({ method: "POST" })
   .validator((input: unknown) => settingsSchema.parse(input))
   .handler(async ({ data, context }) => {
     const sb = context.supabase as unknown as LooseSupabase;
-    const { error } = await sb
+    // Upsert both draft + published copies so a missing singleton row is
+    // created and the write can't silently no-op. Verify via `.select()`.
+    const { data: rows, error } = await sb
       .from("site_content")
-      .update({ data, published_data: data, updated_by: context.userId })
-      .eq("id", "main");
+      .upsert(
+        { id: "main", data, published_data: data, updated_by: context.userId },
+        { onConflict: "id" },
+      )
+      .select("id");
     if (error) throw new Error(error.message);
+    if (!rows || rows.length === 0) {
+      throw new Error("Publish failed: no row was written. Check admin permissions.");
+    }
     return { ok: true };
   });

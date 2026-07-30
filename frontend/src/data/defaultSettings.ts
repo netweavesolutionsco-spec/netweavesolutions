@@ -17,9 +17,6 @@ export type SiteSettings = {
     faviconUrl?: string;
   };
   social: {
-    twitter: string;
-    linkedin: string;
-    github: string;
     instagram: string;
   };
   nav: NavItem[];
@@ -51,9 +48,6 @@ export const defaultSettings: SiteSettings = {
     faviconUrl: "",
   },
   social: {
-    twitter: "https://twitter.com",
-    linkedin: "https://linkedin.com",
-    github: "https://github.com",
     instagram: "https://instagram.com",
   },
   nav: [

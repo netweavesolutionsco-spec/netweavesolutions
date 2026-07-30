@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { MessageCircle, X, Send } from "lucide-react";
-import { brand } from "@/data/brand";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 
 const chips = ["Get a Custom Quote", "Web Development Price", "School/Hospital ERP Inquiry"];
 
 export function FloatingWhatsApp() {
   const [open, setOpen] = useState(false);
-  const waLink = (msg: string) => `https://wa.me/${brand.whatsapp}?text=${encodeURIComponent(msg)}`;
+  const settings = useSiteSettings();
+  const waLink = (msg: string) =>
+    `https://wa.me/${settings.brand.whatsapp}?text=${encodeURIComponent(msg)}`;
 
   return (
     <>
@@ -25,7 +27,7 @@ export function FloatingWhatsApp() {
                 <MessageCircle className="h-5 w-5" />
               </div>
               <div className="flex-1">
-                <div className="text-sm font-semibold">Netweavesolutions</div>
+                <div className="text-sm font-semibold">Chat with us</div>
                 <div className="text-[11px] text-white/80 flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 animate-pulse" />
                   Typically replies in minutes
@@ -64,7 +66,7 @@ export function FloatingWhatsApp() {
                 ))}
               </div>
               <a
-                href={waLink("Hi Netweavesolutions, I'd like to discuss a project.")}
+                href={waLink("Hi, I'd like to discuss a project.")}
                 target="_blank"
                 rel="noreferrer"
                 className="flex items-center justify-center gap-2 w-full rounded-full bg-[#25D366] hover:bg-[#20bd5a] text-white font-semibold text-sm py-2.5 transition-colors"

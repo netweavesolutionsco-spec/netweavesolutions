@@ -9,9 +9,6 @@ export const brand = {
   whatsapp: "918434554873",
   address: "India",
   social: {
-    twitter: "https://twitter.com",
-    linkedin: "https://linkedin.com",
-    github: "https://github.com",
     instagram: "https://instagram.com",
   },
 };

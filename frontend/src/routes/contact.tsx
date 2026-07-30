@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { brand } from "@/data/brand";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useClientAuth } from "@/hooks/use-client-auth";
 import { useCreateRequirement } from "@/lib/portal-api";
 
@@ -70,6 +71,10 @@ export const Route = createFileRoute("/contact")({
 });
 
 function Contact() {
+  // Contact details come from the live CMS settings so admin edits are
+  // reflected here (same source as the footer/navbar), not the static brand.
+  const settings = useSiteSettings();
+  const { email, phone, whatsapp, address } = settings.brand;
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState<{ name: string; email: string } | null>(null);
   // The brief is a client-portal submission, so it reuses the existing client
@@ -135,7 +140,7 @@ function Contact() {
     }
   };
 
-  const waLink = `https://wa.me/${brand.whatsapp}?text=${encodeURIComponent("Hi Netweavesolutions, I'd like to discuss a project.")}`;
+  const waLink = `https://wa.me/${whatsapp}?text=${encodeURIComponent("Hi, I'd like to discuss a project.")}`;
 
   return (
     <Section className="pt-20 md:pt-28">
@@ -172,7 +177,7 @@ function Contact() {
 
               <div className="mt-6 space-y-4">
                 <a
-                  href={`mailto:netweavesolutions.co@gmail.com`}
+                  href={`mailto:${email}`}
                   className="flex items-start gap-3 group"
                 >
                   <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 border border-white/15">
@@ -181,18 +186,18 @@ function Contact() {
                   <div className="text-sm">
                     <div className="text-white/60 text-xs">Direct Email</div>
                     <div className="text-white group-hover:text-cyan-200 transition-colors">
-                      netweavesolutions.co@gmail.com
+                      {email}
                     </div>
                   </div>
                 </a>
-                <a href={`tel:+918434554873`} className="flex items-start gap-3 group">
+                <a href={`tel:${phone}`} className="flex items-start gap-3 group">
                   <div className="grid h-10 w-10 place-items-center rounded-xl bg-white/10 border border-white/15">
                     <Phone className="h-4 w-4 text-cyan-300" />
                   </div>
                   <div className="text-sm">
                     <div className="text-white/60 text-xs">Phone / WhatsApp</div>
                     <div className="text-white group-hover:text-cyan-200 transition-colors">
-                      +91 84345 54873
+                      {phone}
                     </div>
                   </div>
                 </a>
@@ -202,7 +207,7 @@ function Contact() {
                   </div>
                   <div className="text-sm">
                     <div className="text-white/60 text-xs">Location HQ</div>
-                    <div className="text-white">Bangalore & Delhi NCR, India</div>
+                    <div className="text-white">{address}</div>
                   </div>
                 </div>
               </div>
@@ -254,7 +259,7 @@ function Contact() {
 
             <div className="mt-4">
               <div className="font-semibold text-white">Netweavesolutions Tech Park</div>
-              <div className="text-sm text-white/60">Bangalore & Delhi NCR, India</div>
+              <div className="text-sm text-white/60">{address}</div>
             </div>
           </div>
         </div>
@@ -324,9 +329,9 @@ function Contact() {
                 Prefer not to sign in? Email us at{" "}
                 <a
                   className="text-cyan-300 hover:underline"
-                  href="mailto:netweavesolutions.co@gmail.com"
+                  href={`mailto:${email}`}
                 >
-                  netweavesolutions.co@gmail.com
+                  {email}
                 </a>{" "}
                 or message us on WhatsApp.
               </p>

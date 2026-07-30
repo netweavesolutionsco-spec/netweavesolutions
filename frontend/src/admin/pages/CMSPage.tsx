@@ -332,7 +332,7 @@ export function CMSPage() {
 
         <TabsContent value="social" className="mt-4">
           <Card className="p-6 space-y-4">
-            {(["twitter", "linkedin", "github", "instagram"] as const).map((k) => (
+            {(["instagram"] as const).map((k) => (
               <Row key={k} label={k[0].toUpperCase() + k.slice(1)}>
                 <Input
                   value={settings.social[k]}

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { brand } from "@/data/brand";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { BUDGETS, SERVICES, leadSchema, submitLead } from "@/lib/leads";
 
 const selectClass =
@@ -17,6 +17,10 @@ const selectClass =
 const fieldClass = "mt-1.5 h-11 rounded-lg bg-background";
 
 export function ExpertAssistanceForm() {
+  // Pull contact details from live CMS settings so admin edits (including the
+  // WhatsApp number) are reflected here — never the static brand file.
+  const settings = useSiteSettings();
+  const brand = settings.brand;
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<{ name: string; email: string } | null>(null);
@@ -68,7 +72,7 @@ export function ExpertAssistanceForm() {
   };
 
   const waLink = `https://wa.me/${brand.whatsapp}?text=${encodeURIComponent(
-    "Hi Netweavesolutions, I'd like to discuss a project.",
+    "Hi, I'd like to discuss a project.",
   )}`;
 
   return (
