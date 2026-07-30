@@ -22,6 +22,7 @@ import { CostEstimatorModal } from "@/components/cost-estimator-modal";
 import { SeoAuditDrawer } from "@/components/seo-audit-drawer";
 import { AIChatWidget } from "@/components/ai-chat-widget";
 import { ClientAuthProvider } from "@/hooks/use-client-auth";
+import { useCmsPreviewBridge } from "@/hooks/useCmsPreview";
 
 function NotFoundComponent() {
   return (
@@ -157,40 +158,48 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isAdmin = pathname.startsWith("/admin");
-  const isClient = pathname.startsWith("/client");
-  const chromeless = isAdmin || isClient;
   return (
     <QueryClientProvider client={queryClient}>
       <ClientAuthProvider>
         <ThemeProvider>
-          <div className="relative min-h-screen bg-background text-foreground antialiased">
-            {!chromeless && (
-              <div
-                aria-hidden
-                className="pointer-events-none fixed inset-0 -z-10"
-                style={{ background: "var(--gradient-radial)" }}
-              />
-            )}
-            {!chromeless && <Navbar />}
-            {chromeless ? (
-              <Outlet />
-            ) : (
-              <main className="pt-24">
-                <Outlet />
-              </main>
-            )}
-            {!chromeless && <Footer />}
-            {!chromeless && <FloatingWhatsApp />}
-            {!chromeless && <BackToTop />}
-            {!chromeless && <CostEstimatorModal />}
-            <SeoAuditDrawer />
-            {!chromeless && <AIChatWidget />}
-            <Toaster richColors position="top-right" />
-          </div>
+          <RootChrome />
         </ThemeProvider>
       </ClientAuthProvider>
     </QueryClientProvider>
+  );
+}
+
+function RootChrome() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isAdmin = pathname.startsWith("/admin");
+  const isClient = pathname.startsWith("/client");
+  const chromeless = isAdmin || isClient;
+  // Live-preview iframe bridge: feeds unpublished CMS draft into the settings cache.
+  useCmsPreviewBridge();
+  return (
+    <div className="relative min-h-screen bg-background text-foreground antialiased">
+      {!chromeless && (
+        <div
+          aria-hidden
+          className="pointer-events-none fixed inset-0 -z-10"
+          style={{ background: "var(--gradient-radial)" }}
+        />
+      )}
+      {!chromeless && <Navbar />}
+      {chromeless ? (
+        <Outlet />
+      ) : (
+        <main className="pt-24">
+          <Outlet />
+        </main>
+      )}
+      {!chromeless && <Footer />}
+      {!chromeless && <FloatingWhatsApp />}
+      {!chromeless && <BackToTop />}
+      {!chromeless && <CostEstimatorModal />}
+      <SeoAuditDrawer />
+      {!chromeless && <AIChatWidget />}
+      <Toaster richColors position="top-right" />
+    </div>
   );
 }

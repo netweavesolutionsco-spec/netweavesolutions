@@ -97,6 +97,81 @@ export const emailTemplates = {
     };
   },
 
+  /** Internal alert sent to the team when a client schedules a meeting. */
+  newMeeting: (meeting) => {
+    const row = (label, value) =>
+      value
+        ? `<tr>
+             <td style="padding:8px 14px;background:#f8fafc;border:1px solid #e2e8f0;font-weight:600;white-space:nowrap">${label}</td>
+             <td style="padding:8px 14px;border:1px solid #e2e8f0">${esc(value)}</td>
+           </tr>`
+        : "";
+
+    return {
+      subject: `New meeting request — ${meeting.clientName || meeting.clientEmail} (${meeting.platformLabel})`,
+      text:
+        `New meeting request\n\n` +
+        `Client: ${meeting.clientName || "-"}\nEmail: ${meeting.clientEmail || "-"}\n` +
+        `Platform: ${meeting.platformLabel}\nDate: ${meeting.date}\nTime: ${meeting.time}\n` +
+        `Topic: ${meeting.title}\n\nDescription:\n${meeting.agenda || "-"}\n`,
+      html: `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:620px;margin:0 auto;color:#0f172a">
+        <div style="background:linear-gradient(135deg,#4f46e5,#06b6d4);padding:22px 26px;border-radius:12px 12px 0 0">
+          <h2 style="margin:0;color:#fff;font-size:19px">📅 New meeting request</h2>
+          <p style="margin:6px 0 0;color:rgba(255,255,255,.85);font-size:13px">Scheduled from the client portal</p>
+        </div>
+        <div style="border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;padding:22px 26px;background:#fff">
+          <table style="width:100%;border-collapse:collapse;font-size:14px">
+            ${row("Client Name", meeting.clientName)}
+            ${row("Client Email", meeting.clientEmail)}
+            ${row("Platform", meeting.platformLabel)}
+            ${row("Date", meeting.date)}
+            ${row("Time", meeting.time)}
+            ${row("Topic", meeting.title)}
+          </table>
+          <h3 style="margin:22px 0 8px;font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:#64748b">Description</h3>
+          <div style="padding:14px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;line-height:1.6;white-space:pre-wrap">${esc(meeting.agenda || "-")}</div>
+          <p style="margin:22px 0 0;font-size:12px;color:#94a3b8">Manage this request in the admin panel under <b>Meeting Requests</b>.</p>
+        </div>
+      </div>`,
+    };
+  },
+
+  /** Internal alert sent to the team when a client submits a support request. */
+  newSupportRequest: (ticket) => {
+    const row = (label, value) =>
+      value
+        ? `<tr>
+             <td style="padding:8px 14px;background:#f8fafc;border:1px solid #e2e8f0;font-weight:600;white-space:nowrap">${label}</td>
+             <td style="padding:8px 14px;border:1px solid #e2e8f0">${esc(value)}</td>
+           </tr>`
+        : "";
+
+    return {
+      subject: `New support request — ${ticket.subject} (${ticket.priority})`,
+      text:
+        `New support request\n\n` +
+        `Client: ${ticket.clientName || "-"}\nEmail: ${ticket.clientEmail || "-"}\n` +
+        `Subject: ${ticket.subject}\nPriority: ${ticket.priority}\n\nMessage:\n${ticket.message || "-"}\n`,
+      html: `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:620px;margin:0 auto;color:#0f172a">
+        <div style="background:linear-gradient(135deg,#4f46e5,#06b6d4);padding:22px 26px;border-radius:12px 12px 0 0">
+          <h2 style="margin:0;color:#fff;font-size:19px">🛟 New support request</h2>
+          <p style="margin:6px 0 0;color:rgba(255,255,255,.85);font-size:13px">Submitted from the client portal</p>
+        </div>
+        <div style="border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;padding:22px 26px;background:#fff">
+          <table style="width:100%;border-collapse:collapse;font-size:14px">
+            ${row("Client Name", ticket.clientName)}
+            ${row("Client Email", ticket.clientEmail)}
+            ${row("Subject", ticket.subject)}
+            ${row("Priority", ticket.priority)}
+          </table>
+          <h3 style="margin:22px 0 8px;font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:#64748b">Message</h3>
+          <div style="padding:14px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;line-height:1.6;white-space:pre-wrap">${esc(ticket.message || "-")}</div>
+          <p style="margin:22px 0 0;font-size:12px;color:#94a3b8">Manage this request in the admin panel under <b>Support Requests</b>.</p>
+        </div>
+      </div>`,
+    };
+  },
+
   /** Auto-reply confirmation sent to the person who filled in the form. */
   leadThankYou: (lead) => ({
     subject: "We've received your project enquiry — Netweavesolutions",

@@ -1,4 +1,6 @@
 import * as portal from "../services/portal.service.js";
+import { emailTemplates, sendMail } from "../utils/mailer.js";
+import { env } from "../config/env.js";
 
 const TABLES = {
   files: "project_files",
@@ -7,9 +9,27 @@ const TABLES = {
   invoices: "project_invoices",
   payments: "project_payments",
   meetings: "project_meetings",
+  support: "support_requests",
   notifications: "client_notifications",
   activity: "client_activity_logs",
 };
+
+const PLATFORM_LABELS = {
+  google_meet: "Google Meet",
+  microsoft_teams: "Microsoft Teams",
+  zoom: "Zoom",
+  other: "Other",
+};
+
+/** Notifications must never block or fail the request — fire and forget. */
+function notifyCompany(mail) {
+  void sendMail({
+    to: env.LEAD_NOTIFY_EMAIL,
+    subject: mail.subject,
+    html: mail.html,
+    text: mail.text,
+  }).catch((err) => console.error("[portal] company notification failed:", err?.message ?? err));
+}
 
 export async function dashboard(req, res) {
   res.json(await portal.getDashboard(req.client));
@@ -76,7 +96,34 @@ export async function respondToQuotation(req, res) {
 }
 
 export async function createMeeting(req, res) {
-  res.status(201).json({ meeting: await portal.createMeeting(req.client, req.body) });
+  const meeting = await portal.createMeeting(req.client, req.body);
+  const scheduled = new Date(meeting.scheduledAt);
+  notifyCompany(
+    emailTemplates.newMeeting({
+      clientName: meeting.clientName,
+      clientEmail: meeting.clientEmail,
+      platformLabel: PLATFORM_LABELS[meeting.platform] ?? "Meeting",
+      date: scheduled.toLocaleDateString("en-IN", { dateStyle: "medium" }),
+      time: scheduled.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+      title: meeting.title,
+      agenda: meeting.agenda,
+    }),
+  );
+  res.status(201).json({ meeting });
+}
+
+export async function createSupportRequest(req, res) {
+  const ticket = await portal.createSupportRequest(req.client, req.body);
+  notifyCompany(
+    emailTemplates.newSupportRequest({
+      clientName: ticket.clientName,
+      clientEmail: ticket.clientEmail,
+      subject: ticket.subject,
+      priority: ticket.priority,
+      message: ticket.message,
+    }),
+  );
+  res.status(201).json({ supportRequest: ticket });
 }
 
 export async function updateMeeting(req, res) {

@@ -49,6 +49,7 @@ const taskUpdateSchema = taskSchema.partial();
 
 const messageSchema = z.object({
   projectId: uuid.optional(),
+  subject: z.string().trim().max(200).optional(),
   body: z.string().trim().min(1).max(6000),
   attachments: z.array(attachment).default([]),
   pinned: z.boolean().optional(),
@@ -95,6 +96,7 @@ const meetingSchema = z.object({
   agenda: z.string().trim().max(5000).optional(),
   scheduledAt: z.string().datetime(),
   durationMinutes: z.number().int().min(15).max(480).default(30),
+  platform: z.enum(["google_meet", "microsoft_teams", "zoom", "other"]).optional(),
   googleMeetUrl: z.string().trim().url().optional(),
   zoomUrl: z.string().trim().url().optional(),
   notes: z.string().trim().max(5000).optional(),
@@ -103,6 +105,13 @@ const meetingSchema = z.object({
 const meetingUpdateSchema = meetingSchema
   .extend({ status: z.enum(["scheduled", "completed", "cancelled", "rescheduled"]).optional() })
   .partial();
+
+const supportSchema = z.object({
+  projectId: uuid.optional(),
+  subject: z.string().trim().min(2).max(200),
+  message: z.string().trim().min(5).max(6000),
+  priority: z.enum(["low", "normal", "high", "urgent"]).default("normal"),
+});
 
 router.use(requireAuth);
 
@@ -115,9 +124,10 @@ router.get("/projects/:projectId/tasks", asyncHandler(controller.listTasks));
 router.post("/projects/:projectId/tasks", validate(taskSchema), asyncHandler(controller.createTask));
 router.patch("/tasks/:taskId", validate(taskUpdateSchema), asyncHandler(controller.updateTask));
 
-router.get("/:collection(files|messages|quotations|invoices|payments|meetings|notifications|activity)", asyncHandler(controller.listCollection));
+router.get("/:collection(files|messages|quotations|invoices|payments|meetings|support|notifications|activity)", asyncHandler(controller.listCollection));
 router.post("/messages", validate(messageSchema), asyncHandler(controller.createMessage));
 router.patch("/messages/:messageId", validate(messageUpdateSchema), asyncHandler(controller.updateMessage));
+router.post("/support", validate(supportSchema), asyncHandler(controller.createSupportRequest));
 router.post("/files/upload", validate(fileUploadSchema), asyncHandler(controller.uploadFile));
 router.patch("/files/:fileId", validate(fileUpdateSchema), asyncHandler(controller.updateFile));
 router.delete("/files/:fileId", asyncHandler(controller.deleteFile));

@@ -88,10 +88,13 @@ export interface ProjectMessage {
   id: string;
   projectId?: string | null;
   senderName: string;
+  senderEmail?: string | null;
+  subject?: string | null;
   body: string;
   attachments: PortalAttachment[];
   pinned: boolean;
   seenAt?: string | null;
+  adminReadAt?: string | null;
   createdAt: string;
 }
 
@@ -139,17 +142,42 @@ export interface Payment {
   createdAt: string;
 }
 
+export type MeetingPlatform = "google_meet" | "microsoft_teams" | "zoom" | "other";
+export type MeetingStatus =
+  | "pending"
+  | "accepted"
+  | "rejected"
+  | "completed"
+  | "scheduled"
+  | "cancelled"
+  | "rescheduled";
+
 export interface Meeting {
   id: string;
   projectId?: string | null;
+  clientName?: string | null;
+  clientEmail?: string | null;
   title: string;
   agenda?: string;
   scheduledAt: string;
   durationMinutes: number;
-  status: "scheduled" | "completed" | "cancelled" | "rescheduled";
+  status: MeetingStatus;
+  platform?: MeetingPlatform | null;
   googleMeetUrl?: string;
   zoomUrl?: string;
   notes?: string;
+  createdAt: string;
+}
+
+export interface SupportRequest {
+  id: string;
+  projectId?: string | null;
+  clientName: string;
+  clientEmail: string;
+  subject: string;
+  message: string;
+  priority: Priority;
+  status: "open" | "in_progress" | "resolved" | "closed";
   createdAt: string;
 }
 
@@ -284,7 +312,7 @@ export function useCreateProject() {
 export function useCreateMessage() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (input: { projectId?: string; body: string; attachments?: PortalAttachment[] }) =>
+    mutationFn: (input: { projectId?: string; subject?: string; body: string; attachments?: PortalAttachment[] }) =>
       api.post<{ message: ProjectMessage }>("/portal/messages", input),
     onSuccess: (_, input) => {
       void queryClient.invalidateQueries({ queryKey: portalKeys.dashboard });
@@ -353,10 +381,23 @@ export function useCreateMeeting() {
       agenda?: string;
       scheduledAt: string;
       durationMinutes: number;
+      platform?: MeetingPlatform;
     }) => api.post<{ meeting: Meeting }>("/portal/meetings", input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: portalKeys.dashboard });
       void queryClient.invalidateQueries({ queryKey: ["portal", "meetings"] });
+    },
+  });
+}
+
+export function useCreateSupport() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { projectId?: string; subject: string; message: string; priority: Priority }) =>
+      api.post<{ supportRequest: SupportRequest }>("/portal/support", input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: portalKeys.dashboard });
+      void queryClient.invalidateQueries({ queryKey: ["portal", "support"] });
     },
   });
 }

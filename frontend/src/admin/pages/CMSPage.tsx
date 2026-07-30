@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Save, Send, Plus, Trash2, GripVertical } from "lucide-react";
+import { Loader2, Save, Send, Plus, Trash2, GripVertical, Eye, Monitor, Smartphone, RefreshCw, X } from "lucide-react";
 import { PageHeader } from "@/admin/components/PageHeader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/card";
 import { getDraftSettings, saveDraftSettings, publishSettings } from "@/lib/cms.functions";
 import { defaultSettings, mergeSettings, type SiteSettings, type NavItem } from "@/data/defaultSettings";
 import { invalidatePublishedContent } from "@/hooks/siteContentSync";
+import { PREVIEW_READY, PREVIEW_SETTINGS } from "@/hooks/useCmsPreview";
 
 export function CMSPage() {
   const loadDraft = useServerFn(getDraftSettings);
@@ -26,6 +27,10 @@ export function CMSPage() {
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewDevice, setPreviewDevice] = useState<"desktop" | "mobile">("desktop");
+  const [previewPath, setPreviewPath] = useState("/");
+  const previewRef = useRef<HTMLIFrameElement | null>(null);
 
   useEffect(() => {
     loadDraft()
@@ -36,6 +41,32 @@ export function CMSPage() {
       .catch((e) => toast.error(String(e?.message ?? e)))
       .finally(() => setLoading(false));
   }, [loadDraft]);
+
+  // Stream the current draft into the preview iframe whenever it changes or the
+  // iframe (re)loads. Nothing is persisted or published — the live site is
+  // untouched until "Publish" is clicked.
+  const pushPreview = () => {
+    previewRef.current?.contentWindow?.postMessage(
+      { type: PREVIEW_SETTINGS, settings },
+      window.location.origin,
+    );
+  };
+
+  useEffect(() => {
+    if (!previewOpen) return;
+    pushPreview();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings, previewOpen]);
+
+  useEffect(() => {
+    if (!previewOpen) return;
+    const onMessage = (e: MessageEvent) => {
+      if (e.data?.type === PREVIEW_READY) pushPreview();
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [previewOpen, settings]);
 
   const onSave = async () => {
     setSaving(true);
@@ -98,7 +129,11 @@ export function CMSPage() {
         title="Content Management"
         description="Edit your live website — every change goes to draft, then Publish pushes it live."
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={() => setPreviewOpen(true)}>
+              <Eye className="mr-2 h-4 w-4" />
+              Live Preview
+            </Button>
             <Button variant="outline" onClick={onSave} disabled={saving}>
               {saving ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -365,6 +400,126 @@ export function CMSPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {previewOpen && (
+        <PreviewOverlay
+          device={previewDevice}
+          setDevice={setPreviewDevice}
+          path={previewPath}
+          setPath={setPreviewPath}
+          iframeRef={previewRef}
+          onClose={() => setPreviewOpen(false)}
+          onRefresh={pushPreview}
+        />
+      )}
+    </div>
+  );
+}
+
+const PREVIEW_PAGES = [
+  { path: "/", label: "Home" },
+  { path: "/about", label: "About" },
+  { path: "/services", label: "Services" },
+  { path: "/portfolio", label: "Portfolio" },
+  { path: "/pricing", label: "Pricing" },
+  { path: "/contact", label: "Contact" },
+];
+
+function PreviewOverlay({
+  device,
+  setDevice,
+  path,
+  setPath,
+  iframeRef,
+  onClose,
+  onRefresh,
+}: {
+  device: "desktop" | "mobile";
+  setDevice: (d: "desktop" | "mobile") => void;
+  path: string;
+  setPath: (p: string) => void;
+  iframeRef: React.RefObject<HTMLIFrameElement | null>;
+  onClose: () => void;
+  onRefresh: () => void;
+}) {
+  const src = `${path}${path.includes("?") ? "&" : "?"}preview=cms`;
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
+  return (
+    <div className="fixed inset-0 z-50 flex flex-col bg-background/95 backdrop-blur-sm">
+      <div className="flex flex-wrap items-center gap-2 border-b border-border/60 bg-card/80 px-4 py-3">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          <Eye className="h-4 w-4 text-(--brand)" />
+          Live Preview
+          <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+            Unpublished draft
+          </span>
+        </div>
+
+        <div className="ml-2 flex items-center gap-1 rounded-lg border border-border/60 p-1">
+          {PREVIEW_PAGES.map((p) => (
+            <button
+              key={p.path}
+              onClick={() => setPath(p.path)}
+              className={`rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
+                path === p.path
+                  ? "bg-(--brand) text-white"
+                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="ml-auto flex items-center gap-1">
+          <Button
+            variant={device === "desktop" ? "default" : "outline"}
+            size="icon"
+            className="h-8 w-8"
+            title="Desktop"
+            onClick={() => setDevice("desktop")}
+          >
+            <Monitor className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={device === "mobile" ? "default" : "outline"}
+            size="icon"
+            className="h-8 w-8"
+            title="Mobile"
+            onClick={() => setDevice("mobile")}
+          >
+            <Smartphone className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" className="h-8 w-8" title="Refresh preview" onClick={onRefresh}>
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="sm" className="h-8 gap-1.5" onClick={onClose}>
+            <X className="h-4 w-4" /> Close
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex flex-1 items-stretch justify-center overflow-auto bg-muted/40 p-4">
+        <div
+          className={`mx-auto h-full overflow-hidden rounded-xl border border-border bg-background shadow-2xl transition-all ${
+            device === "mobile" ? "w-[390px] max-w-full" : "w-full"
+          }`}
+        >
+          <iframe
+            ref={iframeRef}
+            key={path}
+            src={src}
+            title="Live preview"
+            className="h-full w-full border-0"
+          />
+        </div>
+      </div>
     </div>
   );
 }

@@ -370,6 +370,8 @@ export async function createMessage(client, input) {
       client_id: client.id,
       sender_id: client.id,
       sender_name: client.fullName || client.email,
+      sender_email: client.email,
+      subject: input.subject ?? null,
       body: input.body,
       attachments: input.attachments ?? [],
       pinned: input.pinned ?? false,
@@ -379,6 +381,28 @@ export async function createMessage(client, input) {
     .single();
   if (error) throw error;
   await recordActivity(client.id, client.id, "message_sent", "Message sent to the team", {}, input.projectId ?? null);
+  return camelize(data);
+}
+
+export async function createSupportRequest(client, input) {
+  if (input.projectId) await requireProject(client.id, input.projectId);
+  const { data, error } = await supabaseAdmin
+    .from("support_requests")
+    .insert({
+      client_id: client.id,
+      project_id: input.projectId ?? null,
+      client_name: client.fullName || client.email,
+      client_email: client.email,
+      subject: input.subject,
+      message: input.message,
+      priority: input.priority ?? "normal",
+      status: "open",
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  await recordActivity(client.id, client.id, "support_requested", `Support request: ${data.subject}`, {}, input.projectId ?? null);
+  await insertNotification(client.id, "support_request", "Support request received", data.subject, "/client/support");
   return camelize(data);
 }
 
@@ -482,13 +506,17 @@ export async function createMeeting(client, input) {
     .insert({
       project_id: input.projectId ?? null,
       client_id: client.id,
+      client_name: client.fullName || client.email,
+      client_email: client.email,
       title: input.title,
       agenda: input.agenda,
       scheduled_at: input.scheduledAt,
       duration_minutes: input.durationMinutes,
+      platform: input.platform,
       google_meet_url: input.googleMeetUrl,
       zoom_url: input.zoomUrl,
       notes: input.notes,
+      status: "pending",
     })
     .select("*")
     .single();

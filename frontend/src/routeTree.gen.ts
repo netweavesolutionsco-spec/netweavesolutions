@@ -30,6 +30,9 @@ import { Route as AdminCareersRouteImport } from './routes/admin.careers'
 import { Route as AdminCmsRouteImport } from './routes/admin.cms'
 import { Route as AdminCollectionsRouteImport } from './routes/admin.collections'
 import { Route as AdminLeadsRouteImport } from './routes/admin.leads'
+import { Route as AdminMeetingsRouteImport } from './routes/admin.meetings'
+import { Route as AdminMessagesRouteImport } from './routes/admin.messages'
+import { Route as AdminSupportRouteImport } from './routes/admin.support'
 import { Route as AdminMediaRouteImport } from './routes/admin.media'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminPortfolioRouteImport } from './routes/admin.portfolio'
@@ -170,6 +173,21 @@ const AdminCollectionsRoute = AdminCollectionsRouteImport.update({
 const AdminLeadsRoute = AdminLeadsRouteImport.update({
   id: '/leads',
   path: '/leads',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMeetingsRoute = AdminMeetingsRouteImport.update({
+  id: '/meetings',
+  path: '/meetings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminMessagesRoute = AdminMessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSupportRoute = AdminSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminMediaRoute = AdminMediaRouteImport.update({
@@ -374,6 +392,9 @@ export interface FileRoutesByFullPath {
   '/admin/cms': typeof AdminCmsRoute
   '/admin/collections': typeof AdminCollectionsRoute
   '/admin/leads': typeof AdminLeadsRoute
+  '/admin/meetings': typeof AdminMeetingsRoute
+  '/admin/messages': typeof AdminMessagesRoute
+  '/admin/support': typeof AdminSupportRoute
   '/admin/media': typeof AdminMediaRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/portfolio': typeof AdminPortfolioRoute
@@ -432,6 +453,9 @@ export interface FileRoutesByTo {
   '/admin/cms': typeof AdminCmsRoute
   '/admin/collections': typeof AdminCollectionsRoute
   '/admin/leads': typeof AdminLeadsRoute
+  '/admin/meetings': typeof AdminMeetingsRoute
+  '/admin/messages': typeof AdminMessagesRoute
+  '/admin/support': typeof AdminSupportRoute
   '/admin/media': typeof AdminMediaRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/portfolio': typeof AdminPortfolioRoute
@@ -492,6 +516,9 @@ export interface FileRoutesById {
   '/admin/cms': typeof AdminCmsRoute
   '/admin/collections': typeof AdminCollectionsRoute
   '/admin/leads': typeof AdminLeadsRoute
+  '/admin/meetings': typeof AdminMeetingsRoute
+  '/admin/messages': typeof AdminMessagesRoute
+  '/admin/support': typeof AdminSupportRoute
   '/admin/media': typeof AdminMediaRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/portfolio': typeof AdminPortfolioRoute
@@ -553,6 +580,9 @@ export interface FileRouteTypes {
     | '/admin/cms'
     | '/admin/collections'
     | '/admin/leads'
+    | '/admin/meetings'
+    | '/admin/messages'
+    | '/admin/support'
     | '/admin/media'
     | '/admin/notifications'
     | '/admin/portfolio'
@@ -611,6 +641,9 @@ export interface FileRouteTypes {
     | '/admin/cms'
     | '/admin/collections'
     | '/admin/leads'
+    | '/admin/meetings'
+    | '/admin/messages'
+    | '/admin/support'
     | '/admin/media'
     | '/admin/notifications'
     | '/admin/portfolio'
@@ -670,6 +703,9 @@ export interface FileRouteTypes {
     | '/admin/cms'
     | '/admin/collections'
     | '/admin/leads'
+    | '/admin/meetings'
+    | '/admin/messages'
+    | '/admin/support'
     | '/admin/media'
     | '/admin/notifications'
     | '/admin/portfolio'
@@ -893,6 +929,27 @@ declare module '@tanstack/react-router' {
       path: '/leads'
       fullPath: '/admin/leads'
       preLoaderRoute: typeof AdminLeadsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/meetings': {
+      id: '/admin/meetings'
+      path: '/meetings'
+      fullPath: '/admin/meetings'
+      preLoaderRoute: typeof AdminMeetingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/messages': {
+      id: '/admin/messages'
+      path: '/messages'
+      fullPath: '/admin/messages'
+      preLoaderRoute: typeof AdminMessagesRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/support': {
+      id: '/admin/support'
+      path: '/support'
+      fullPath: '/admin/support'
+      preLoaderRoute: typeof AdminSupportRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/media': {
@@ -1158,6 +1215,9 @@ interface AdminRouteChildren {
   AdminCmsRoute: typeof AdminCmsRoute
   AdminCollectionsRoute: typeof AdminCollectionsRoute
   AdminLeadsRoute: typeof AdminLeadsRoute
+  AdminMeetingsRoute: typeof AdminMeetingsRoute
+  AdminMessagesRoute: typeof AdminMessagesRoute
+  AdminSupportRoute: typeof AdminSupportRoute
   AdminMediaRoute: typeof AdminMediaRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminPortfolioRoute: typeof AdminPortfolioRoute
@@ -1180,6 +1240,9 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCmsRoute: AdminCmsRoute,
   AdminCollectionsRoute: AdminCollectionsRoute,
   AdminLeadsRoute: AdminLeadsRoute,
+  AdminMeetingsRoute: AdminMeetingsRoute,
+  AdminMessagesRoute: AdminMessagesRoute,
+  AdminSupportRoute: AdminSupportRoute,
   AdminMediaRoute: AdminMediaRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
   AdminPortfolioRoute: AdminPortfolioRoute,

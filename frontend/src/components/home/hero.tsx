@@ -5,9 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Counter } from "@/components/counter";
 import { openEstimator } from "@/components/cost-estimator-modal";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useCollection } from "@/hooks/useCollection";
 
 export function Hero() {
   const settings = useSiteSettings();
+  const projects = useCollection("portfolio");
+  const projectsDelivered = projects.length;
 
   const renderTitle = (title: string) => {
     const target = "Powerful Digital Solutions";
@@ -122,7 +125,7 @@ export function Hero() {
             className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3 max-w-lg"
           >
             {[
-              { v: 150, s: "+", l: "Projects Delivered" },
+              { v: projectsDelivered, s: "+", l: "Projects Delivered" },
               { v: 99, s: "%", l: "Client Satisfaction" },
               { v: 24, s: "/7", l: "Dedicated SLA Support" },
             ].map((m) => (

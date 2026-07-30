@@ -6,8 +6,15 @@ import { ClientPortalShell } from "@/components/client/client-portal-shell";
 import { PortalEmpty, PortalError, PortalPanel, PortalSkeleton, PortalStatus } from "@/components/client/portal-ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { formatDate, type Meeting, useCreateMeeting, usePortalCollection } from "@/lib/portal-api";
+import {
+  formatDate,
+  type Meeting,
+  type MeetingPlatform,
+  useCreateMeeting,
+  usePortalCollection,
+} from "@/lib/portal-api";
 
 export const Route = createFileRoute("/client/meetings")({
   head: () => ({
@@ -16,28 +23,50 @@ export const Route = createFileRoute("/client/meetings")({
   component: MeetingsPage,
 });
 
+const PLATFORMS: { value: MeetingPlatform; label: string }[] = [
+  { value: "google_meet", label: "Google Meet" },
+  { value: "microsoft_teams", label: "Microsoft Teams" },
+];
+
+const PLATFORM_LABELS: Record<string, string> = {
+  google_meet: "Google Meet",
+  microsoft_teams: "Microsoft Teams",
+  zoom: "Zoom",
+  other: "Other",
+};
+
 function MeetingsPage() {
   const meetings = usePortalCollection<Meeting>("meetings", { pageSize: 100 });
   const createMeeting = useCreateMeeting();
+  const [platform, setPlatform] = useState<MeetingPlatform>("google_meet");
   const [title, setTitle] = useState("");
-  const [agenda, setAgenda] = useState("");
-  const [scheduledAt, setScheduledAt] = useState("");
+  const [description, setDescription] = useState("");
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
   const now = Date.now();
-  const upcoming = (meetings.data?.data ?? []).filter((meeting) => new Date(meeting.scheduledAt).getTime() >= now && meeting.status !== "cancelled");
+  const upcoming = (meetings.data?.data ?? []).filter((meeting) => new Date(meeting.scheduledAt).getTime() >= now && meeting.status !== "cancelled" && meeting.status !== "rejected");
   const past = (meetings.data?.data ?? []).filter((meeting) => new Date(meeting.scheduledAt).getTime() < now || meeting.status === "completed");
 
   const submit = async () => {
+    const scheduledAt = new Date(`${date}T${time}`);
+    if (Number.isNaN(scheduledAt.getTime())) {
+      toast.error("Please choose a valid date and time");
+      return;
+    }
     try {
       await createMeeting.mutateAsync({
+        platform,
         title,
-        agenda,
-        scheduledAt: new Date(scheduledAt).toISOString(),
+        agenda: description,
+        scheduledAt: scheduledAt.toISOString(),
         durationMinutes: 30,
       });
       setTitle("");
-      setAgenda("");
-      setScheduledAt("");
-      toast.success("Meeting requested");
+      setDescription("");
+      setDate("");
+      setTime("");
+      setPlatform("google_meet");
+      toast.success("Meeting request submitted — status: Pending");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Meeting could not be requested");
     }
@@ -62,13 +91,43 @@ function MeetingsPage() {
           </PortalPanel>
         </div>
 
-        <PortalPanel icon={Calendar} title="Request Meeting">
+        <PortalPanel icon={Calendar} title="Schedule Meeting">
           <div className="space-y-4">
-            <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Meeting title" />
-            <Input type="datetime-local" value={scheduledAt} onChange={(event) => setScheduledAt(event.target.value)} />
-            <Textarea rows={5} value={agenda} onChange={(event) => setAgenda(event.target.value)} placeholder="Agenda or notes" />
-            <Button className="w-full" disabled={!title.trim() || !scheduledAt || createMeeting.isPending} onClick={submit}>
-              {createMeeting.isPending ? "Requesting..." : "Request Meeting"}
+            <div className="space-y-1.5">
+              <Label htmlFor="meeting-platform">Meeting Platform</Label>
+              <select
+                id="meeting-platform"
+                value={platform}
+                onChange={(event) => setPlatform(event.target.value as MeetingPlatform)}
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                {PLATFORMS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="meeting-date">Date</Label>
+                <Input id="meeting-date" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="meeting-time">Time</Label>
+                <Input id="meeting-time" type="time" value={time} onChange={(event) => setTime(event.target.value)} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="meeting-topic">Topic</Label>
+              <Input id="meeting-topic" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="What is this meeting about?" />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="meeting-description">Description (optional)</Label>
+              <Textarea id="meeting-description" rows={4} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Add any context or agenda" />
+            </div>
+            <Button className="w-full" disabled={!title.trim() || !date || !time || createMeeting.isPending} onClick={submit}>
+              {createMeeting.isPending ? "Scheduling..." : "Schedule Meeting"}
             </Button>
           </div>
         </PortalPanel>
@@ -86,7 +145,12 @@ function MeetingList({ meetings }: { meetings: Meeting[] }) {
             <h2 className="font-semibold">{meeting.title}</h2>
             <PortalStatus value={meeting.status} />
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">{formatDate(meeting.scheduledAt)} · {meeting.durationMinutes} min</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {formatDate(meeting.scheduledAt)}
+            {" · "}
+            {new Date(meeting.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            {meeting.platform && ` · ${PLATFORM_LABELS[meeting.platform] ?? meeting.platform}`}
+          </p>
           {meeting.agenda && <p className="mt-2 text-sm leading-6">{meeting.agenda}</p>}
           <div className="mt-3 flex flex-wrap gap-2">
             {meeting.googleMeetUrl && <Button asChild variant="outline" size="sm"><a href={meeting.googleMeetUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" />Google Meet</a></Button>}

@@ -17,17 +17,19 @@ export const Route = createFileRoute("/client/messages")({
 });
 
 function MessagesPage() {
+  const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [search, setSearch] = useState("");
   const messages = usePortalCollection<ProjectMessage>("messages", { pageSize: 100 });
   const createMessage = useCreateMessage();
   const filtered = (messages.data?.data ?? []).filter((message) =>
-    `${message.senderName} ${message.body}`.toLowerCase().includes(search.toLowerCase()),
+    `${message.senderName} ${message.subject ?? ""} ${message.body}`.toLowerCase().includes(search.toLowerCase()),
   );
 
   const send = async () => {
     try {
-      await createMessage.mutateAsync({ body });
+      await createMessage.mutateAsync({ subject: subject.trim() || undefined, body });
+      setSubject("");
       setBody("");
       toast.success("Message sent");
     } catch (error) {
@@ -58,7 +60,10 @@ function MessagesPage() {
                   </div>
                   <span className="text-xs text-muted-foreground">{formatDate(message.createdAt)}</span>
                 </div>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6">{message.body}</p>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6">
+                  {message.subject && <span className="mb-1 block font-medium">{message.subject}</span>}
+                  {message.body}
+                </p>
                 {message.attachments.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-2">
                     {message.attachments.map((attachment) => (
@@ -74,7 +79,13 @@ function MessagesPage() {
         </PortalPanel>
 
         <PortalPanel icon={Send} title="Contact Team">
-          <Textarea rows={8} value={body} onChange={(event) => setBody(event.target.value)} placeholder="Write your update, question, or support request..." />
+          <Input
+            className="mb-3"
+            value={subject}
+            onChange={(event) => setSubject(event.target.value)}
+            placeholder="Subject (optional)"
+          />
+          <Textarea rows={7} value={body} onChange={(event) => setBody(event.target.value)} placeholder="Write your update, question, or support request..." />
           <Button className="mt-4 w-full" disabled={body.trim().length === 0 || createMessage.isPending} onClick={send}>
             <Send className="h-4 w-4" />
             {createMessage.isPending ? "Sending..." : "Send Message"}
