@@ -27,13 +27,42 @@ export async function sendMail({ to, subject, html, text }) {
 }
 
 export const emailTemplates = {
+  /**
+   * Sent to a newly registered client. Their account stays inactive until this
+   * link is opened, so this is the only thing standing between signup and a
+   * usable login — keep it short and make the button impossible to miss.
+   */
   verifyEmail: (name, link) => ({
-    subject: "New client account awaiting approval",
-    html: `<p>Hi team,</p>
-      <p>A new client account for ${name || "a new user"} is waiting for approval.</p>
-      <p>Use the button below to approve the account:</p>
-      <p><a href="${link}">Approve account</a></p>
-      <p>Link expires in 24 hours.</p>`,
+    subject: "Verify your email — Netweavesolutions",
+    text:
+      `Hi ${name || "there"},\n\n` +
+      `Thanks for creating a Netweavesolutions account. Confirm your email address to activate it:\n\n${link}\n\n` +
+      `You won't be able to sign in until your email is verified. This link expires in 24 hours.\n\n` +
+      `If you didn't create this account, you can safely ignore this email.\n\n— Team Netweavesolutions`,
+    html: `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:600px;margin:0 auto;color:#0f172a">
+      <div style="background:linear-gradient(135deg,#4f46e5,#06b6d4);padding:30px 26px;border-radius:12px 12px 0 0;text-align:center">
+        <h1 style="margin:0;color:#fff;font-size:22px">Confirm your email</h1>
+      </div>
+      <div style="border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;padding:26px;background:#fff;font-size:15px;line-height:1.65">
+        <p style="margin:0 0 14px">Hi <b>${esc(name || "there")}</b>,</p>
+        <p style="margin:0 0 20px">
+          Thanks for creating a Netweavesolutions account. Confirm your email address to activate it —
+          you won't be able to sign in until you do.
+        </p>
+        <p style="margin:0 0 20px;text-align:center">
+          <a href="${link}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:13px 28px;border-radius:8px;font-size:15px;font-weight:600">Verify my email</a>
+        </p>
+        <p style="margin:0 0 14px;font-size:13px;color:#64748b">
+          If the button doesn't work, paste this link into your browser:<br/>
+          <span style="word-break:break-all;color:#4f46e5">${link}</span>
+        </p>
+        <p style="margin:0 0 14px;font-size:13px;color:#64748b">This link expires in 24 hours.</p>
+        <p style="margin:22px 0 0;color:#475569">
+          Didn't create this account? You can safely ignore this email.<br/>
+          <b style="color:#0f172a">Team Netweavesolutions</b>
+        </p>
+      </div>
+    </div>`,
   }),
   resetPassword: (name, link) => ({
     subject: "Reset your Netweavesolutions password",
@@ -44,8 +73,13 @@ export const emailTemplates = {
   }),
   otp: (name, code) => ({
     subject: `Your Netweavesolutions verification code: ${code}`,
-    html: `<p>Hi ${name || "there"},</p>
-      <p>Your one-time code is <b style="font-size:20px">${code}</b>. It expires in 10 minutes.</p>`,
+    text:
+      `Hi ${name || "there"},\n\n` +
+      `Your one-time verification code is ${code}. It expires in 10 minutes.\n\n` +
+      `If you didn't request this code, ignore this email.\n\n— Team Netweavesolutions`,
+    html: `<p>Hi ${esc(name || "there")},</p>
+      <p>Your one-time code is <b style="font-size:20px">${esc(code)}</b>. It expires in 10 minutes.</p>
+      <p style="font-size:13px;color:#64748b">If you didn't request this code, ignore this email.</p>`,
   }),
 
   /** Internal alert sent to the team when a website enquiry arrives. */
@@ -167,6 +201,51 @@ export const emailTemplates = {
           <h3 style="margin:22px 0 8px;font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:#64748b">Message</h3>
           <div style="padding:14px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;line-height:1.6;white-space:pre-wrap">${esc(ticket.message || "-")}</div>
           <p style="margin:22px 0 0;font-size:12px;color:#94a3b8">Manage this request in the admin panel under <b>Support Requests</b>.</p>
+        </div>
+      </div>`,
+    };
+  },
+
+  /**
+   * Company notification for a project brief submitted from the Contact page
+   * by a signed-in client. Mirrors newSupportRequest so both admin alerts read
+   * the same way in the inbox.
+   */
+  newProjectRequirement: (requirement) => {
+    const row = (label, value) =>
+      value
+        ? `<tr>
+             <td style="padding:8px 14px;background:#f8fafc;border:1px solid #e2e8f0;font-weight:600;white-space:nowrap">${label}</td>
+             <td style="padding:8px 14px;border:1px solid #e2e8f0">${esc(value)}</td>
+           </tr>`
+        : "";
+
+    return {
+      subject: `New project requirement — ${requirement.clientName || requirement.clientEmail}`,
+      text:
+        `New project requirement\n\n` +
+        `Client: ${requirement.clientName || "-"}\nEmail: ${requirement.clientEmail || "-"}\n` +
+        `Phone: ${requirement.phone || "-"}\nCompany: ${requirement.company || "-"}\n` +
+        `Service: ${requirement.service || "-"}\nBudget: ${requirement.budget || "-"}\n` +
+        `Timeline: ${requirement.timeline || "-"}\n\nRequirement:\n${requirement.requirement || "-"}\n`,
+      html: `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:620px;margin:0 auto;color:#0f172a">
+        <div style="background:linear-gradient(135deg,#4f46e5,#06b6d4);padding:22px 26px;border-radius:12px 12px 0 0">
+          <h2 style="margin:0;color:#fff;font-size:19px">📋 New project requirement</h2>
+          <p style="margin:6px 0 0;color:rgba(255,255,255,.85);font-size:13px">Submitted from the contact page by a verified client</p>
+        </div>
+        <div style="border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;padding:22px 26px;background:#fff">
+          <table style="width:100%;border-collapse:collapse;font-size:14px">
+            ${row("Client Name", requirement.clientName)}
+            ${row("Client Email", requirement.clientEmail)}
+            ${row("Phone", requirement.phone)}
+            ${row("Company", requirement.company)}
+            ${row("Service", requirement.service)}
+            ${row("Budget", requirement.budget)}
+            ${row("Timeline", requirement.timeline)}
+          </table>
+          <h3 style="margin:22px 0 8px;font-size:14px;text-transform:uppercase;letter-spacing:.05em;color:#64748b">Requirement</h3>
+          <div style="padding:14px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;line-height:1.6;white-space:pre-wrap">${esc(requirement.requirement || "-")}</div>
+          <p style="margin:22px 0 0;font-size:12px;color:#94a3b8">Manage this brief in the admin panel under <b>Project Requirements</b>.</p>
         </div>
       </div>`,
     };

@@ -126,6 +126,16 @@ export async function createSupportRequest(req, res) {
   res.status(201).json({ supportRequest: ticket });
 }
 
+export async function createProjectRequirement(req, res) {
+  const { requirement, duplicate } = await portal.createProjectRequirement(req.client, req.body);
+  // A duplicate is a double submit of a brief we already stored and already
+  // emailed about — acknowledge it without sending the company a second copy.
+  if (!duplicate) {
+    notifyCompany(emailTemplates.newProjectRequirement(requirement));
+  }
+  res.status(201).json({ requirement });
+}
+
 export async function updateMeeting(req, res) {
   res.json({ meeting: await portal.updateMeeting(req.client, req.params.meetingId, req.body) });
 }

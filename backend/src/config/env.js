@@ -35,7 +35,14 @@ export const env = {
   FRONTEND_ORIGIN: origins,
   FRONTEND_PRIMARY: origins[0],
   COOKIE_DOMAIN: process.env.COOKIE_DOMAIN || undefined,
-  COOKIE_SECURE: (process.env.COOKIE_SECURE ?? "true") !== "false",
+  // Secure cookies require HTTPS. Default to on in production (unchanged), but
+  // off for local development — a `Secure; SameSite=None` cookie is silently
+  // dropped by browsers over plain http://localhost, which broke the refresh
+  // token and surfaced as "Invalid or expired token" in the client portal.
+  COOKIE_SECURE:
+    process.env.COOKIE_SECURE !== undefined && process.env.COOKIE_SECURE !== ""
+      ? process.env.COOKIE_SECURE !== "false"
+      : (process.env.NODE_ENV || "development") === "production",
   SMTP: {
     host: process.env.SMTP_HOST,
     port: Number(process.env.SMTP_PORT || 587),
@@ -60,5 +67,11 @@ export const env = {
     templateName: process.env.WHATSAPP_TEMPLATE_NAME || "new_lead_alert",
     templateLang: process.env.WHATSAPP_TEMPLATE_LANG || "en",
     useText: process.env.WHATSAPP_USE_TEXT === "true",
+    // Approved Meta "authentication" template used to deliver the mobile OTP to
+    // a client's own number. Leave unset to disable WhatsApp OTP delivery — the
+    // code is then emailed to the (already verified) address instead, so mobile
+    // verification never dead-ends when WhatsApp isn't provisioned.
+    otpTemplateName: process.env.WHATSAPP_OTP_TEMPLATE_NAME || "",
+    otpTemplateLang: process.env.WHATSAPP_OTP_TEMPLATE_LANG || "en",
   },
 };

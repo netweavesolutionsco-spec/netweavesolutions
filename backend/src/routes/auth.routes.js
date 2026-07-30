@@ -40,4 +40,21 @@ r.post(
 r.post("/send-otp", asyncHandler(requireAuth), authLimiter, asyncHandler(c.sendOtp));
 r.post("/verify-otp", asyncHandler(requireAuth), validate(c.otpSchema), asyncHandler(c.verifyOtp));
 
+// Mobile verification. Signed-in only: the challenge is bound to the caller's
+// own profile, so the number can never be verified on someone else's behalf.
+r.post(
+  "/phone-otp",
+  asyncHandler(requireAuth),
+  authLimiter,
+  validate(c.phoneOtpRequestSchema),
+  asyncHandler(c.sendPhoneOtp),
+);
+r.post(
+  "/verify-phone-otp",
+  asyncHandler(requireAuth),
+  authLimiter,
+  validate(c.phoneOtpVerifySchema),
+  asyncHandler(c.verifyPhoneOtp),
+);
+
 export default r;

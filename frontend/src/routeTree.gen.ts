@@ -30,16 +30,18 @@ import { Route as AdminCareersRouteImport } from './routes/admin.careers'
 import { Route as AdminCmsRouteImport } from './routes/admin.cms'
 import { Route as AdminCollectionsRouteImport } from './routes/admin.collections'
 import { Route as AdminLeadsRouteImport } from './routes/admin.leads'
+import { Route as AdminMediaRouteImport } from './routes/admin.media'
 import { Route as AdminMeetingsRouteImport } from './routes/admin.meetings'
 import { Route as AdminMessagesRouteImport } from './routes/admin.messages'
-import { Route as AdminSupportRouteImport } from './routes/admin.support'
-import { Route as AdminMediaRouteImport } from './routes/admin.media'
 import { Route as AdminNotificationsRouteImport } from './routes/admin.notifications'
 import { Route as AdminPortfolioRouteImport } from './routes/admin.portfolio'
 import { Route as AdminPricingRouteImport } from './routes/admin.pricing'
 import { Route as AdminProfileRouteImport } from './routes/admin.profile'
+import { Route as AdminProjectsRouteImport } from './routes/admin.projects'
+import { Route as AdminRequirementsRouteImport } from './routes/admin.requirements'
 import { Route as AdminServicesRouteImport } from './routes/admin.services'
 import { Route as AdminSettingsRouteImport } from './routes/admin.settings'
+import { Route as AdminSupportRouteImport } from './routes/admin.support'
 import { Route as AdminTeamRouteImport } from './routes/admin.team'
 import { Route as AdminTestimonialsRouteImport } from './routes/admin.testimonials'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
@@ -175,6 +177,11 @@ const AdminLeadsRoute = AdminLeadsRouteImport.update({
   path: '/leads',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminMediaRoute = AdminMediaRouteImport.update({
+  id: '/media',
+  path: '/media',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminMeetingsRoute = AdminMeetingsRouteImport.update({
   id: '/meetings',
   path: '/meetings',
@@ -183,16 +190,6 @@ const AdminMeetingsRoute = AdminMeetingsRouteImport.update({
 const AdminMessagesRoute = AdminMessagesRouteImport.update({
   id: '/messages',
   path: '/messages',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminSupportRoute = AdminSupportRouteImport.update({
-  id: '/support',
-  path: '/support',
-  getParentRoute: () => AdminRoute,
-} as any)
-const AdminMediaRoute = AdminMediaRouteImport.update({
-  id: '/media',
-  path: '/media',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminNotificationsRoute = AdminNotificationsRouteImport.update({
@@ -215,6 +212,16 @@ const AdminProfileRoute = AdminProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminProjectsRoute = AdminProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminRequirementsRoute = AdminRequirementsRouteImport.update({
+  id: '/requirements',
+  path: '/requirements',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminServicesRoute = AdminServicesRouteImport.update({
   id: '/services',
   path: '/services',
@@ -223,6 +230,11 @@ const AdminServicesRoute = AdminServicesRouteImport.update({
 const AdminSettingsRoute = AdminSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminSupportRoute = AdminSupportRouteImport.update({
+  id: '/support',
+  path: '/support',
   getParentRoute: () => AdminRoute,
 } as any)
 const AdminTeamRoute = AdminTeamRouteImport.update({
@@ -392,16 +404,18 @@ export interface FileRoutesByFullPath {
   '/admin/cms': typeof AdminCmsRoute
   '/admin/collections': typeof AdminCollectionsRoute
   '/admin/leads': typeof AdminLeadsRoute
+  '/admin/media': typeof AdminMediaRoute
   '/admin/meetings': typeof AdminMeetingsRoute
   '/admin/messages': typeof AdminMessagesRoute
-  '/admin/support': typeof AdminSupportRoute
-  '/admin/media': typeof AdminMediaRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/portfolio': typeof AdminPortfolioRoute
   '/admin/pricing': typeof AdminPricingRoute
   '/admin/profile': typeof AdminProfileRoute
+  '/admin/projects': typeof AdminProjectsRoute
+  '/admin/requirements': typeof AdminRequirementsRoute
   '/admin/services': typeof AdminServicesRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
   '/admin/testimonials': typeof AdminTestimonialsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -453,16 +467,18 @@ export interface FileRoutesByTo {
   '/admin/cms': typeof AdminCmsRoute
   '/admin/collections': typeof AdminCollectionsRoute
   '/admin/leads': typeof AdminLeadsRoute
+  '/admin/media': typeof AdminMediaRoute
   '/admin/meetings': typeof AdminMeetingsRoute
   '/admin/messages': typeof AdminMessagesRoute
-  '/admin/support': typeof AdminSupportRoute
-  '/admin/media': typeof AdminMediaRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/portfolio': typeof AdminPortfolioRoute
   '/admin/pricing': typeof AdminPricingRoute
   '/admin/profile': typeof AdminProfileRoute
+  '/admin/projects': typeof AdminProjectsRoute
+  '/admin/requirements': typeof AdminRequirementsRoute
   '/admin/services': typeof AdminServicesRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
   '/admin/testimonials': typeof AdminTestimonialsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -516,16 +532,18 @@ export interface FileRoutesById {
   '/admin/cms': typeof AdminCmsRoute
   '/admin/collections': typeof AdminCollectionsRoute
   '/admin/leads': typeof AdminLeadsRoute
+  '/admin/media': typeof AdminMediaRoute
   '/admin/meetings': typeof AdminMeetingsRoute
   '/admin/messages': typeof AdminMessagesRoute
-  '/admin/support': typeof AdminSupportRoute
-  '/admin/media': typeof AdminMediaRoute
   '/admin/notifications': typeof AdminNotificationsRoute
   '/admin/portfolio': typeof AdminPortfolioRoute
   '/admin/pricing': typeof AdminPricingRoute
   '/admin/profile': typeof AdminProfileRoute
+  '/admin/projects': typeof AdminProjectsRoute
+  '/admin/requirements': typeof AdminRequirementsRoute
   '/admin/services': typeof AdminServicesRoute
   '/admin/settings': typeof AdminSettingsRoute
+  '/admin/support': typeof AdminSupportRoute
   '/admin/team': typeof AdminTeamRoute
   '/admin/testimonials': typeof AdminTestimonialsRoute
   '/admin/users': typeof AdminUsersRoute
@@ -580,16 +598,18 @@ export interface FileRouteTypes {
     | '/admin/cms'
     | '/admin/collections'
     | '/admin/leads'
+    | '/admin/media'
     | '/admin/meetings'
     | '/admin/messages'
-    | '/admin/support'
-    | '/admin/media'
     | '/admin/notifications'
     | '/admin/portfolio'
     | '/admin/pricing'
     | '/admin/profile'
+    | '/admin/projects'
+    | '/admin/requirements'
     | '/admin/services'
     | '/admin/settings'
+    | '/admin/support'
     | '/admin/team'
     | '/admin/testimonials'
     | '/admin/users'
@@ -641,16 +661,18 @@ export interface FileRouteTypes {
     | '/admin/cms'
     | '/admin/collections'
     | '/admin/leads'
+    | '/admin/media'
     | '/admin/meetings'
     | '/admin/messages'
-    | '/admin/support'
-    | '/admin/media'
     | '/admin/notifications'
     | '/admin/portfolio'
     | '/admin/pricing'
     | '/admin/profile'
+    | '/admin/projects'
+    | '/admin/requirements'
     | '/admin/services'
     | '/admin/settings'
+    | '/admin/support'
     | '/admin/team'
     | '/admin/testimonials'
     | '/admin/users'
@@ -703,16 +725,18 @@ export interface FileRouteTypes {
     | '/admin/cms'
     | '/admin/collections'
     | '/admin/leads'
+    | '/admin/media'
     | '/admin/meetings'
     | '/admin/messages'
-    | '/admin/support'
-    | '/admin/media'
     | '/admin/notifications'
     | '/admin/portfolio'
     | '/admin/pricing'
     | '/admin/profile'
+    | '/admin/projects'
+    | '/admin/requirements'
     | '/admin/services'
     | '/admin/settings'
+    | '/admin/support'
     | '/admin/team'
     | '/admin/testimonials'
     | '/admin/users'
@@ -931,6 +955,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLeadsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/media': {
+      id: '/admin/media'
+      path: '/media'
+      fullPath: '/admin/media'
+      preLoaderRoute: typeof AdminMediaRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/meetings': {
       id: '/admin/meetings'
       path: '/meetings'
@@ -943,20 +974,6 @@ declare module '@tanstack/react-router' {
       path: '/messages'
       fullPath: '/admin/messages'
       preLoaderRoute: typeof AdminMessagesRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/support': {
-      id: '/admin/support'
-      path: '/support'
-      fullPath: '/admin/support'
-      preLoaderRoute: typeof AdminSupportRouteImport
-      parentRoute: typeof AdminRoute
-    }
-    '/admin/media': {
-      id: '/admin/media'
-      path: '/media'
-      fullPath: '/admin/media'
-      preLoaderRoute: typeof AdminMediaRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/notifications': {
@@ -987,6 +1004,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminProfileRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/projects': {
+      id: '/admin/projects'
+      path: '/projects'
+      fullPath: '/admin/projects'
+      preLoaderRoute: typeof AdminProjectsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/requirements': {
+      id: '/admin/requirements'
+      path: '/requirements'
+      fullPath: '/admin/requirements'
+      preLoaderRoute: typeof AdminRequirementsRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/services': {
       id: '/admin/services'
       path: '/services'
@@ -999,6 +1030,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/admin/settings'
       preLoaderRoute: typeof AdminSettingsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/support': {
+      id: '/admin/support'
+      path: '/support'
+      fullPath: '/admin/support'
+      preLoaderRoute: typeof AdminSupportRouteImport
       parentRoute: typeof AdminRoute
     }
     '/admin/team': {
@@ -1215,16 +1253,18 @@ interface AdminRouteChildren {
   AdminCmsRoute: typeof AdminCmsRoute
   AdminCollectionsRoute: typeof AdminCollectionsRoute
   AdminLeadsRoute: typeof AdminLeadsRoute
+  AdminMediaRoute: typeof AdminMediaRoute
   AdminMeetingsRoute: typeof AdminMeetingsRoute
   AdminMessagesRoute: typeof AdminMessagesRoute
-  AdminSupportRoute: typeof AdminSupportRoute
-  AdminMediaRoute: typeof AdminMediaRoute
   AdminNotificationsRoute: typeof AdminNotificationsRoute
   AdminPortfolioRoute: typeof AdminPortfolioRoute
   AdminPricingRoute: typeof AdminPricingRoute
   AdminProfileRoute: typeof AdminProfileRoute
+  AdminProjectsRoute: typeof AdminProjectsRoute
+  AdminRequirementsRoute: typeof AdminRequirementsRoute
   AdminServicesRoute: typeof AdminServicesRoute
   AdminSettingsRoute: typeof AdminSettingsRoute
+  AdminSupportRoute: typeof AdminSupportRoute
   AdminTeamRoute: typeof AdminTeamRoute
   AdminTestimonialsRoute: typeof AdminTestimonialsRoute
   AdminUsersRoute: typeof AdminUsersRoute
@@ -1240,16 +1280,18 @@ const AdminRouteChildren: AdminRouteChildren = {
   AdminCmsRoute: AdminCmsRoute,
   AdminCollectionsRoute: AdminCollectionsRoute,
   AdminLeadsRoute: AdminLeadsRoute,
+  AdminMediaRoute: AdminMediaRoute,
   AdminMeetingsRoute: AdminMeetingsRoute,
   AdminMessagesRoute: AdminMessagesRoute,
-  AdminSupportRoute: AdminSupportRoute,
-  AdminMediaRoute: AdminMediaRoute,
   AdminNotificationsRoute: AdminNotificationsRoute,
   AdminPortfolioRoute: AdminPortfolioRoute,
   AdminPricingRoute: AdminPricingRoute,
   AdminProfileRoute: AdminProfileRoute,
+  AdminProjectsRoute: AdminProjectsRoute,
+  AdminRequirementsRoute: AdminRequirementsRoute,
   AdminServicesRoute: AdminServicesRoute,
   AdminSettingsRoute: AdminSettingsRoute,
+  AdminSupportRoute: AdminSupportRoute,
   AdminTeamRoute: AdminTeamRoute,
   AdminTestimonialsRoute: AdminTestimonialsRoute,
   AdminUsersRoute: AdminUsersRoute,

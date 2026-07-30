@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/admin/components/PageHeader";
 import { DataTable, type Column } from "@/admin/components/DataTable";
@@ -15,6 +15,23 @@ import { Check, Eye, Loader2, Mail, X, CheckCheck } from "lucide-react";
 import { toast } from "sonner";
 import { useIsAdmin } from "@/hooks/useAuthUser";
 import { Navigate } from "@tanstack/react-router";
+import { createAdminNotification, createClientNotification } from "@/admin/lib/notifications";
+
+type SupabaseLoose = {
+  from: (table: string) => {
+    select: (columns: string) => {
+      order: (
+        column: string,
+        options: { ascending: boolean },
+      ) => Promise<{ data: unknown[] | null; error: { message?: string } | null }>;
+    };
+    update: (values: Record<string, unknown>) => {
+      eq: (column: string, value: string) => Promise<{ error: { message?: string } | null }>;
+    };
+  };
+};
+
+const db = supabase as unknown as SupabaseLoose;
 
 const PLATFORM_LABELS: Record<string, string> = {
   google_meet: "Google Meet",
@@ -25,6 +42,7 @@ const PLATFORM_LABELS: Record<string, string> = {
 
 interface MeetingRow {
   id: string;
+  clientId: string | null;
   clientName: string;
   clientEmail: string;
   platform: string;
@@ -56,18 +74,32 @@ export function MeetingRequestsPage() {
 
     async function load() {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await db
           .from("project_meetings")
           .select(
-            "id, client_name, client_email, platform, scheduled_at, title, agenda, status, created_at",
+            "id, client_id, client_name, client_email, platform, scheduled_at, title, agenda, status, created_at",
           )
           .order("created_at", { ascending: false });
         if (error) throw error;
         if (cancelled) return;
 
         setMeetings(
-          (data ?? []).map((m) => ({
+          (
+            (data ?? []) as Array<{
+              id: string;
+              client_id: string | null;
+              client_name: string | null;
+              client_email: string | null;
+              platform: string | null;
+              scheduled_at: string;
+              title: string | null;
+              agenda: string | null;
+              status: string | null;
+              created_at: string | null;
+            }>
+          ).map((m) => ({
             id: m.id,
+            clientId: m.client_id ?? null,
             clientName: m.client_name || "—",
             clientEmail: m.client_email || "",
             platform: m.platform || "",
@@ -92,11 +124,13 @@ export function MeetingRequestsPage() {
     };
   }, [isAdmin]);
 
-  const updateStatus = async (id: string, status: string) => {
+  const updateStatus = async (row: MeetingRow, status: string) => {
     const previous = meetings;
+    const label = badgeLabel(status);
+    const id = row.id;
     setSavingId(id);
     setMeetings((rows) => rows.map((r) => (r.id === id ? { ...r, status } : r)));
-    const { error } = await supabase.from("project_meetings").update({ status }).eq("id", id);
+    const { error } = await db.from("project_meetings").update({ status }).eq("id", id);
     setSavingId(null);
     if (error) {
       setMeetings(previous);
@@ -104,122 +138,133 @@ export function MeetingRequestsPage() {
       return;
     }
     setActive((current) => (current && current.id === id ? { ...current, status } : current));
-    toast.success(`Meeting ${badgeLabel(status)}`);
+    void createClientNotification(row.clientId, {
+      type: "meeting_status",
+      title: `Meeting ${label}`,
+      body: `"${row.title || "Your meeting"}" has been marked ${label.toLowerCase()}.`,
+      actionUrl: "/client/meetings",
+    });
+    void createAdminNotification({
+      title: `Meeting ${label}`,
+      description: `${row.clientName}'s meeting request was marked ${label.toLowerCase()}.`,
+      userName: row.clientName,
+      relatedModule: "meetings",
+      type: status === "rejected" ? "warning" : "success",
+      actionUrl: "/admin/meetings",
+    });
+    toast.success(`Meeting ${label}`);
   };
 
-  const columns: Column<MeetingRow>[] = useMemo(
-    () => [
-      {
-        key: "clientName",
-        header: "Client",
-        render: (r) => (
-          <div className="min-w-40">
-            <div className="font-medium">{r.clientName}</div>
-            <div className="text-xs text-muted-foreground">{r.clientEmail}</div>
-          </div>
-        ),
-      },
-      {
-        key: "platform",
-        header: "Platform",
-        render: (r) =>
-          PLATFORM_LABELS[r.platform] || <span className="text-muted-foreground">—</span>,
-      },
-      {
-        key: "scheduledAt",
-        header: "Date & Time",
-        render: (r) => (
-          <span className="whitespace-nowrap text-xs">
-            {new Date(r.scheduledAt).toLocaleDateString()}{" "}
-            {new Date(r.scheduledAt).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-        ),
-      },
-      {
-        key: "title",
-        header: "Topic",
-        render: (r) => <span className="line-clamp-2 max-w-56">{r.title}</span>,
-      },
-      {
-        key: "status",
-        header: "Status",
-        render: (r) => <StatusBadge status={badgeLabel(r.status)} />,
-      },
-      {
-        key: "createdAt",
-        header: "Created",
-        render: (r) => (
-          <span className="whitespace-nowrap text-xs text-muted-foreground">
-            {new Date(r.createdAt).toLocaleDateString()}{" "}
-            {new Date(r.createdAt).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
-          </span>
-        ),
-      },
-      {
-        key: "actions",
-        header: "",
-        render: (r) => (
-          <div className="flex justify-end gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              title="View details"
-              onClick={() => setActive(r)}
-            >
-              <Eye className="h-3.5 w-3.5" />
-            </Button>
-            {savingId === r.id ? (
-              <span className="grid h-8 w-8 place-items-center">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              </span>
-            ) : (
-              <>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-emerald-600"
-                  title="Accept"
-                  disabled={r.status === "accepted"}
-                  onClick={() => updateStatus(r.id, "accepted")}
-                >
-                  <Check className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-rose-600"
-                  title="Reject"
-                  disabled={r.status === "rejected"}
-                  onClick={() => updateStatus(r.id, "rejected")}
-                >
-                  <X className="h-3.5 w-3.5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-sky-600"
-                  title="Mark completed"
-                  disabled={r.status === "completed"}
-                  onClick={() => updateStatus(r.id, "completed")}
-                >
-                  <CheckCheck className="h-3.5 w-3.5" />
-                </Button>
-              </>
-            )}
-          </div>
-        ),
-        className: "text-right",
-      },
-    ],
-    [savingId, meetings],
-  );
+  const columns: Column<MeetingRow>[] = [
+    {
+      key: "clientName",
+      header: "Client",
+      render: (r) => (
+        <div className="min-w-40">
+          <div className="font-medium">{r.clientName}</div>
+          <div className="text-xs text-muted-foreground">{r.clientEmail}</div>
+        </div>
+      ),
+    },
+    {
+      key: "platform",
+      header: "Platform",
+      render: (r) =>
+        PLATFORM_LABELS[r.platform] || <span className="text-muted-foreground">—</span>,
+    },
+    {
+      key: "scheduledAt",
+      header: "Date & Time",
+      render: (r) => (
+        <span className="whitespace-nowrap text-xs">
+          {new Date(r.scheduledAt).toLocaleDateString()}{" "}
+          {new Date(r.scheduledAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </span>
+      ),
+    },
+    {
+      key: "title",
+      header: "Topic",
+      render: (r) => <span className="line-clamp-2 max-w-56">{r.title}</span>,
+    },
+    {
+      key: "status",
+      header: "Status",
+      render: (r) => <StatusBadge status={badgeLabel(r.status)} />,
+    },
+    {
+      key: "createdAt",
+      header: "Created",
+      render: (r) => (
+        <span className="whitespace-nowrap text-xs text-muted-foreground">
+          {new Date(r.createdAt).toLocaleDateString()}{" "}
+          {new Date(r.createdAt).toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          })}
+        </span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "",
+      render: (r) => (
+        <div className="flex justify-end gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            title="View details"
+            onClick={() => setActive(r)}
+          >
+            <Eye className="h-3.5 w-3.5" />
+          </Button>
+          {savingId === r.id ? (
+            <span className="grid h-8 w-8 place-items-center">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            </span>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-emerald-600"
+                title="Accept"
+                disabled={r.status === "accepted"}
+                onClick={() => updateStatus(r, "accepted")}
+              >
+                <Check className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-rose-600"
+                title="Reject"
+                disabled={r.status === "rejected"}
+                onClick={() => updateStatus(r, "rejected")}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-sky-600"
+                title="Mark completed"
+                disabled={r.status === "completed"}
+                onClick={() => updateStatus(r, "completed")}
+              >
+                <CheckCheck className="h-3.5 w-3.5" />
+              </Button>
+            </>
+          )}
+        </div>
+      ),
+      className: "text-right",
+    },
+  ];
 
   const pendingCount = meetings.filter((m) => m.status === "pending").length;
 
@@ -271,7 +316,13 @@ export function MeetingRequestsPage() {
                     ["Email", active.clientEmail],
                     ["Platform", PLATFORM_LABELS[active.platform] || active.platform],
                     ["Date", new Date(active.scheduledAt).toLocaleDateString()],
-                    ["Time", new Date(active.scheduledAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })],
+                    [
+                      "Time",
+                      new Date(active.scheduledAt).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }),
+                    ],
                   ] as const
                 ).map(([label, value]) => (
                   <div key={label} className="col-span-2 grid grid-cols-[6rem_1fr] gap-4">
@@ -293,13 +344,28 @@ export function MeetingRequestsPage() {
               </div>
 
               <div className="flex flex-wrap gap-2 pt-1">
-                <Button size="sm" className="text-emerald-50" onClick={() => updateStatus(active.id, "accepted")} disabled={savingId === active.id || active.status === "accepted"}>
+                <Button
+                  size="sm"
+                  className="text-emerald-50"
+                  onClick={() => updateStatus(active, "accepted")}
+                  disabled={savingId === active.id || active.status === "accepted"}
+                >
                   <Check className="h-3.5 w-3.5" /> Accept
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => updateStatus(active.id, "rejected")} disabled={savingId === active.id || active.status === "rejected"}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => updateStatus(active, "rejected")}
+                  disabled={savingId === active.id || active.status === "rejected"}
+                >
                   <X className="h-3.5 w-3.5" /> Reject
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => updateStatus(active.id, "completed")} disabled={savingId === active.id || active.status === "completed"}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => updateStatus(active, "completed")}
+                  disabled={savingId === active.id || active.status === "completed"}
+                >
                   <CheckCheck className="h-3.5 w-3.5" /> Mark completed
                 </Button>
                 <Button asChild size="sm" variant="outline">

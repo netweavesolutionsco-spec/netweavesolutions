@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { GoogleAuthButton } from "@/components/client/google-auth-button";
 import { Logo } from "@/components/logo";
+import { ApiError } from "@/lib/client-api";
 import { useClientAuth } from "@/hooks/use-client-auth";
 
 const search = z.object({ redirect: z.string().optional(), email: z.string().optional() }).catch({});
@@ -35,6 +37,7 @@ function LoginPage() {
   const [remember, setRemember] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [resending, setResending] = useState(false);
+  const [needsVerification, setNeedsVerification] = useState(false);
 
   useEffect(() => {
     if (!loading && user) navigate({ to: redirect || "/client", replace: true });
@@ -69,6 +72,13 @@ function LoginPage() {
 
   return (
     <div className="mx-auto flex min-h-[70vh] max-w-md flex-col justify-center px-6 py-16">
+      <Link
+        to="/"
+        className="mb-4 inline-flex w-fit items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Website
+      </Link>
       <Link to="/" aria-label="NetweaveSolutions" className="mb-6 inline-flex justify-center">
         <Logo />
       </Link>
@@ -141,7 +151,11 @@ function LoginPage() {
 
         <p className="mt-6 text-center text-sm text-muted-foreground">
           New client?{" "}
-          <Link to="/client/register" className="text-primary hover:underline">
+          <Link
+            to="/client/register"
+            search={{ redirect } as never}
+            className="text-primary hover:underline"
+          >
             Create an account
           </Link>
         </p>

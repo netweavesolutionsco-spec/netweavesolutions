@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { z } from "zod";
 import { env } from "../config/env.js";
 import { supabaseAdmin } from "../config/supabase.js";
@@ -10,8 +11,12 @@ import {
   recordLogin,
   ensureClientForAuthUser,
   toSafeClient,
+  getAppMetadata,
+  setAppMetadata,
 } from "../services/clientService.js";
-import { recordActivity } from "../services/portal.service.js";
+import { recordActivity, insertAdminNotification } from "../services/portal.service.js";
+import { sendMail, emailTemplates } from "../utils/mailer.js";
+import { sendOtpWhatsApp } from "../utils/whatsapp.js";
 
 // --- Schemas ---
 // Strong password: min 8, and at least one uppercase, lowercase, number and
@@ -59,7 +64,21 @@ export const loginSchema = z.object({
   rememberMe: z.boolean().optional(),
 });
 export const emailOnly = z.object({ email: z.string().trim().toLowerCase().email() });
-export const verifyEmailSchema = z.object({ token: z.string().min(10) });
+// Verification accepts either shape:
+//  - `tokenHash`: the `hashed_token` from our own branded mail (admin
+//    `generateLink`), redeemed with `verifyOtp({ token_hash })`.
+//  - `token`: the raw 6-digit/OTP token from Supabase's built-in confirmation
+//    mail, used when our SMTP path falls back to Supabase's mailer.
+export const verifyEmailSchema = z
+  .object({
+    token: z.string().trim().min(6).max(512).optional(),
+    tokenHash: z.string().trim().min(6).max(512).optional(),
+    email: z.string().trim().toLowerCase().email().optional(),
+  })
+  .refine((v) => Boolean(v.token || v.tokenHash), {
+    message: "Missing verification token",
+    path: ["token"],
+  });
 export const resetPasswordSchema = z.object({
   token: z.string().min(10),
   password: strongPassword,
@@ -69,6 +88,16 @@ export const changePasswordSchema = z.object({
   newPassword: strongPassword,
 });
 export const otpSchema = z.object({ otp: z.string().length(6) });
+// Mobile verification. `phone` is optional — when omitted we use the number
+// already on the profile, when supplied it replaces it (and resets any previous
+// verified state) so the verified number is always the stored one.
+export const phoneOtpRequestSchema = z.object({
+  phone: optionalStr(30),
+  countryCode: optionalStr(8),
+});
+export const phoneOtpVerifySchema = z.object({
+  otp: z.string().trim().regex(/^\d{6}$/, "Enter the 6-digit code"),
+});
 // Google OAuth sync: the frontend completes the Supabase OAuth redirect,
 // then hands the resulting session tokens to the backend so we can provision
 // the client record and issue our own refresh cookie (same model as login).
@@ -91,18 +120,68 @@ function isEmailNotConfirmedError(error) {
   return message.includes("email not confirmed") || code.includes("email_not_confirmed");
 }
 
+/**
+ * Signs a client in with email + password.
+ *
+ * Supabase itself rejects unconfirmed emails, so an "email not confirmed" error
+ * is a legitimate refusal — it is surfaced to the caller as `needsVerification`
+ * rather than being auto-confirmed. (An earlier version silently confirmed the
+ * address and retried, which defeated verification entirely.)
+ */
 async function signInClientWithPassword(email, password) {
-  let result = await supabaseAdmin.auth.signInWithPassword({ email, password });
+  const result = await supabaseAdmin.auth.signInWithPassword({ email, password });
+  return { ...result, needsVerification: Boolean(result.error && isEmailNotConfirmedError(result.error)) };
+}
 
-  if (result.error && isEmailNotConfirmedError(result.error)) {
-    const client = await findClientByEmail(email);
-    if (client && !client.emailVerified) {
-      await updateClient(client.id, { emailVerified: true });
-      result = await supabaseAdmin.auth.signInWithPassword({ email, password });
+/**
+ * Sends the "confirm your email address" message through the project's own SMTP
+ * transport (`sendMail` + `emailTemplates.verifyEmail`) so the branding matches
+ * the rest of our mail and we aren't bound by Supabase's built-in mailer limits.
+ *
+ * If the admin link can't be generated we fall back to Supabase's own
+ * confirmation email, so a signup never dead-ends without a way to verify.
+ * Returns whether a message went out.
+ */
+async function sendVerificationEmail({ email, fullName }) {
+  const redirectTo = `${env.FRONTEND_PRIMARY}/client/verify-email`;
+
+  try {
+    // `magiclink` (not `signup`) because the auth user already exists at this
+    // point — `generateLink({type:"signup"})` would fail with "already
+    // registered". Confirming a magic-link OTP stamps `email_confirmed_at`
+    // just the same, which is what `emailVerified` derives from.
+    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+      type: "magiclink",
+      email,
+      options: { redirectTo },
+    });
+    if (error) throw error;
+
+    const tokenHash = data?.properties?.hashed_token;
+    const link = tokenHash
+      ? `${redirectTo}?token_hash=${encodeURIComponent(tokenHash)}`
+      : data?.properties?.action_link;
+    if (!link) throw new Error("Supabase returned no verification link");
+
+    await sendMail({ to: email, ...emailTemplates.verifyEmail(fullName, link) });
+    return true;
+  } catch (error) {
+    console.warn("[auth] falling back to Supabase verification mail:", error?.message ?? error);
+    try {
+      await supabaseAdmin.auth.resend({
+        type: "signup",
+        email,
+        options: { emailRedirectTo: redirectTo },
+      });
+      return true;
+    } catch (fallbackError) {
+      console.error(
+        "[auth] verification email could not be sent:",
+        fallbackError?.message ?? fallbackError,
+      );
+      return false;
     }
   }
-
-  return result;
 }
 
 async function auditAuth(clientId, action, description, metadata = {}) {
@@ -152,16 +231,25 @@ export async function register(req, res) {
 
   const existing = await findClientByEmail(email);
   if (existing) {
+    // An unverified account is treated as an abandoned signup: the details and
+    // password are refreshed and a new verification email goes out. It stays
+    // unverified, so this cannot be used to take over a live account (a verified
+    // one falls through to the 409 below).
     if (!existing.emailVerified) {
       const client = await updateClient(existing.id, {
         ...profileFields,
         password,
-        emailVerified: true,
       });
+      const sent = await sendVerificationEmail({ email, fullName });
+      await auditAuth(client.id, "register", "Verification email re-sent", { email });
 
       return res.status(200).json({
         ok: true,
-        message: "Account is ready. You can sign in now.",
+        requiresEmailVerification: true,
+        emailSent: sent,
+        message: sent
+          ? "Check your inbox — we've sent a new link to verify your email address."
+          : "Account updated, but the verification email could not be sent. Please use the resend option.",
         client: toSafeClient(client),
       });
     }
@@ -169,26 +257,54 @@ export async function register(req, res) {
     return res.status(409).json({ error: "Email already registered" });
   }
 
+  // `emailVerified` is omitted deliberately: `createClient` defaults
+  // `email_confirm` to false, so the account exists but cannot sign in until the
+  // address is confirmed. `login()` enforces that gate.
   const client = await createClient({
     ...profileFields,
     email,
     referralCode,
     password,
     acceptedTerms: true,
-    emailVerified: true,
     role: "customer",
+  });
+
+  const sent = await sendVerificationEmail({ email, fullName });
+  await auditAuth(client.id, "register", "Client account created", { email });
+  await insertAdminNotification({
+    title: "New client registration",
+    description: `${client.fullName || email} created an account.`,
+    userName: client.fullName || email,
+    relatedModule: "clients",
+    type: "success",
+    actionUrl: "/admin/clients",
   });
 
   return res.status(201).json({
     ok: true,
-    message: "Account created successfully. You can sign in now.",
+    requiresEmailVerification: true,
+    emailSent: sent,
+    message: sent
+      ? "Account created. Check your inbox to verify your email address before signing in."
+      : "Account created, but the verification email could not be sent. Please use the resend option.",
     client: toSafeClient(client),
   });
 }
 
 export async function login(req, res) {
   const { email, password } = req.body;
-  const { data, error } = await signInClientWithPassword(email, password);
+  const { data, error, needsVerification } = await signInClientWithPassword(email, password);
+
+  // Supabase refuses unconfirmed emails before it ever checks the password, so
+  // this branch is reached for correct credentials on an unverified account.
+  // The frontend keys off `requiresEmailVerification` to offer "resend link".
+  if (needsVerification) {
+    return res.status(403).json({
+      error: "Please verify your email before signing in.",
+      requiresEmailVerification: true,
+    });
+  }
+
   if (error || !data.session || !data.user) {
     return res.status(401).json({ error: "Invalid credentials" });
   }
@@ -196,13 +312,27 @@ export async function login(req, res) {
   const client = await findClientByEmail(email);
   if (!client) return res.status(401).json({ error: "Invalid credentials" });
   if (client.status !== "active") return res.status(403).json({ error: "Account suspended" });
+  // Belt-and-braces: Supabase already blocked the unconfirmed case above, but the
+  // gate is repeated against our own derived flag so a change in Supabase's
+  // "allow unconfirmed sign-in" setting can never open a hole here.
   if (!client.emailVerified) {
-    return res.status(403).json({ error: "Please verify your email before signing in." });
+    return res.status(403).json({
+      error: "Please verify your email before signing in.",
+      requiresEmailVerification: true,
+    });
   }
 
   const accessToken = await issueSession(res, client, data.session);
   await recordLogin(client.id);
   await auditAuth(client.id, "login", "Client logged in", { email: client.email });
+  await insertAdminNotification({
+    title: "Client login",
+    description: `${client.fullName || client.email} signed in.`,
+    userName: client.fullName || client.email,
+    relatedModule: "auth",
+    type: "info",
+    actionUrl: "/admin/clients",
+  });
   return res.json({ ok: true, accessToken, client: toSafeClient(client) });
 }
 
@@ -244,19 +374,76 @@ export async function me(req, res) {
   return res.json({ client: toSafeClient(req.client) });
 }
 
+/**
+ * Redeems an email-verification token.
+ *
+ * Two link shapes reach here, so both are attempted:
+ *  1. `tokenHash` — the `hashed_token` from our own branded mail. It comes from
+ *     `admin.generateLink({type:"magiclink"})`, so it is redeemed with
+ *     `verifyOtp({ token_hash, type: "email" })`.
+ *  2. `token` — the raw token from Supabase's built-in confirmation mail, used
+ *     when SMTP is unavailable and `sendVerificationEmail` falls back. Those are
+ *     `signup` tokens and need the email alongside them.
+ *
+ * Either way Supabase stamps `email_confirmed_at`, which is what `emailVerified`
+ * derives from; `updateClient` is only called as a safety net.
+ */
 export async function verifyEmail(req, res) {
-  const { token } = req.body;
-  if (!token) {
+  const { token, tokenHash, email } = req.body;
+
+  const attempts = [];
+  if (tokenHash) {
+    attempts.push({ token_hash: tokenHash, type: "email" });
+    attempts.push({ token_hash: tokenHash, type: "signup" });
+  }
+  if (token) {
+    attempts.push({ token_hash: token, type: "email" });
+    if (email) {
+      attempts.push({ email, token, type: "signup" });
+      attempts.push({ email, token, type: "email" });
+    }
+  }
+
+  if (!attempts.length) {
     return res.status(400).json({ error: "Missing verification token" });
   }
 
-  const { data, error } = await supabaseAdmin.auth.verifyOtp({ token, type: "signup" });
-  if (error || !data.user) {
-    return res.status(400).json({ error: "Invalid or expired token" });
+  let verifiedUser = null;
+  let lastError = null;
+  for (const params of attempts) {
+    try {
+      const { data, error } = await supabaseAdmin.auth.verifyOtp(params);
+      if (!error && data?.user) {
+        verifiedUser = data.user;
+        break;
+      }
+      lastError = error;
+    } catch (error) {
+      lastError = error;
+    }
   }
 
-  await updateClient(data.user.id, { emailVerified: true });
-  return res.json({ ok: true });
+  if (!verifiedUser) {
+    console.warn("[auth] verifyEmail failed:", lastError?.message ?? lastError);
+    return res.status(400).json({
+      error: "This verification link is invalid or has expired. Request a new one below.",
+    });
+  }
+
+  try {
+    await updateClient(verifiedUser.id, { emailVerified: true });
+  } catch (error) {
+    console.warn("[auth] verifyEmail could not sync profile:", error?.message ?? error);
+  }
+  await auditAuth(verifiedUser.id, "verify_email", "Email address verified", {
+    email: verifiedUser.email,
+  });
+
+  return res.json({
+    ok: true,
+    email: verifiedUser.email ?? null,
+    message: "Your email address is verified. You can sign in now.",
+  });
 }
 
 export async function forgotPassword(req, res) {
@@ -329,19 +516,172 @@ export async function verifyOtp(req, res) {
   return res.json({ ok: true, accessToken: data.session.access_token });
 }
 
-// Public, pre-login: re-sends the signup confirmation email. Always returns a
-// generic success so it can't be used to probe which emails are registered.
+// --- Mobile verification ---
+// The code itself is never stored: only a SHA-256 hash, its expiry, the attempt
+// counter and the number it was issued for, all inside `app_metadata` (which the
+// service role alone can write). Mobile verification is deliberately NOT a login
+// gate — `login()` keys off email only — so a client can never be locked out by
+// an unreachable number.
+const PHONE_OTP_TTL_MS = 10 * 60 * 1000;
+const PHONE_OTP_RESEND_MS = 60 * 1000;
+const PHONE_OTP_MAX_ATTEMPTS = 5;
+
+function hashOtp(code, phone) {
+  return crypto.createHash("sha256").update(`${phone}:${code}`).digest("hex");
+}
+
+function normalizePhone(phone, countryCode) {
+  const digits = String(phone ?? "").replace(/[^\d]/g, "");
+  if (!digits) return "";
+  const cc = String(countryCode ?? "").replace(/[^\d]/g, "");
+  if (!cc || digits.startsWith(cc)) return `+${digits}`;
+  return `+${cc}${digits}`;
+}
+
+export async function sendPhoneOtp(req, res) {
+  if (!req.client) return res.status(401).json({ error: "Client not found" });
+
+  const requestedPhone = req.body.phone?.trim() || req.client.phone;
+  const countryCode = req.body.countryCode?.trim() || req.client.countryCode;
+  const target = normalizePhone(requestedPhone, countryCode);
+
+  if (!target || target.replace(/\D/g, "").length < 8) {
+    return res.status(400).json({ error: "Add a valid mobile number before requesting a code." });
+  }
+
+  const meta = await getAppMetadata(req.client.id);
+  const pending = meta.phone_otp;
+  if (pending?.sentAt && Date.now() - pending.sentAt < PHONE_OTP_RESEND_MS) {
+    const wait = Math.ceil((PHONE_OTP_RESEND_MS - (Date.now() - pending.sentAt)) / 1000);
+    return res.status(429).json({ error: `Please wait ${wait}s before requesting another code.` });
+  }
+
+  // A new number replaces the stored one and invalidates any previous verified
+  // state, so the flag always refers to the number we actually hold.
+  if (req.body.phone?.trim() && requestedPhone !== req.client.phone) {
+    await updateClient(req.client.id, {
+      phone: requestedPhone,
+      countryCode: countryCode || undefined,
+    });
+  }
+
+  const code = String(crypto.randomInt(0, 1_000_000)).padStart(6, "0");
+
+  const whatsapp = await sendOtpWhatsApp(target, code);
+  let channel = whatsapp?.sent ? "whatsapp" : null;
+
+  if (!channel) {
+    // No SMS provider is configured anywhere in this project, so when WhatsApp
+    // can't deliver we send the code to the client's already-verified email
+    // rather than dead-ending the flow.
+    try {
+      await sendMail({
+        to: req.client.email,
+        ...emailTemplates.otp(req.client.fullName, code),
+      });
+      channel = "email";
+    } catch (error) {
+      console.error("[auth] phone OTP could not be delivered:", error?.message ?? error);
+    }
+  }
+
+  if (!channel) {
+    return res.status(502).json({ error: "We couldn't send the code right now. Please try again." });
+  }
+
+  await setAppMetadata(req.client.id, {
+    phone_verified: false,
+    phone_otp: {
+      hash: hashOtp(code, target),
+      phone: target,
+      expiresAt: Date.now() + PHONE_OTP_TTL_MS,
+      sentAt: Date.now(),
+      attempts: 0,
+    },
+  });
+
+  await auditAuth(req.client.id, "phone_otp_sent", "Mobile verification code sent", {
+    channel,
+    phone: target,
+  });
+
+  return res.json({
+    ok: true,
+    channel,
+    phone: target,
+    message:
+      channel === "whatsapp"
+        ? "We've sent a 6-digit code to your WhatsApp number."
+        : `We couldn't reach that number, so the code was emailed to ${req.client.email}.`,
+  });
+}
+
+export async function verifyPhoneOtp(req, res) {
+  if (!req.client) return res.status(401).json({ error: "Client not found" });
+
+  const { otp } = req.body;
+  const meta = await getAppMetadata(req.client.id);
+  const pending = meta.phone_otp;
+
+  if (!pending?.hash) {
+    return res.status(400).json({ error: "Request a new verification code." });
+  }
+  if (Date.now() > Number(pending.expiresAt ?? 0)) {
+    await setAppMetadata(req.client.id, { phone_otp: null });
+    return res.status(400).json({ error: "That code has expired. Request a new one." });
+  }
+  if (Number(pending.attempts ?? 0) >= PHONE_OTP_MAX_ATTEMPTS) {
+    await setAppMetadata(req.client.id, { phone_otp: null });
+    return res.status(429).json({ error: "Too many incorrect attempts. Request a new code." });
+  }
+
+  const candidate = Buffer.from(hashOtp(otp, pending.phone));
+  const expected = Buffer.from(String(pending.hash));
+  const matches =
+    candidate.length === expected.length && crypto.timingSafeEqual(candidate, expected);
+
+  if (!matches) {
+    await setAppMetadata(req.client.id, {
+      phone_otp: { ...pending, attempts: Number(pending.attempts ?? 0) + 1 },
+    });
+    const left = PHONE_OTP_MAX_ATTEMPTS - (Number(pending.attempts ?? 0) + 1);
+    return res.status(400).json({
+      error: left > 0 ? `Incorrect code. ${left} attempt(s) left.` : "Incorrect code. Request a new one.",
+    });
+  }
+
+  await setAppMetadata(req.client.id, {
+    phone_verified: true,
+    phone_verified_at: new Date().toISOString(),
+    phone_verified_number: pending.phone,
+    phone_otp: null,
+  });
+  await auditAuth(req.client.id, "phone_verified", "Mobile number verified", {
+    phone: pending.phone,
+  });
+
+  const client = await findClientById(req.client.id);
+  return res.json({
+    ok: true,
+    message: "Your mobile number is verified.",
+    client: toSafeClient(client),
+  });
+}
+
+// Public, pre-login: re-sends the confirmation email. Reuses the same
+// `sendVerificationEmail` helper as signup so the link format the frontend
+// redeems is identical. Always returns a generic success so it can't be used to
+// probe which emails are registered.
 export async function resendVerification(req, res) {
   const { email } = req.body;
   try {
-    await supabaseAdmin.auth.resend({
-      type: "signup",
-      email,
-      options: { emailRedirectTo: `${env.FRONTEND_PRIMARY}/client/verify-email` },
-    });
+    const client = await findClientByEmail(email);
+    // Nothing to do for unknown or already-verified addresses — the generic
+    // response below hides which case it was.
+    if (client && !client.emailVerified) {
+      await sendVerificationEmail({ email, fullName: client.fullName });
+    }
   } catch (error) {
-    // Supabase errors when the account is already confirmed / doesn't exist.
-    // That's expected here — we still return a generic success below.
     console.warn("[auth] resendVerification:", error?.message ?? error);
   }
   return res.json({
@@ -374,6 +714,14 @@ export async function oauthSync(req, res) {
   }
   await recordLogin(client.id);
   await auditAuth(client.id, "login", "Client logged in with Google", { email: client.email });
+  await insertAdminNotification({
+    title: "Client login",
+    description: `${client.fullName || client.email} signed in with Google.`,
+    userName: client.fullName || client.email,
+    relatedModule: "auth",
+    type: "info",
+    actionUrl: "/admin/clients",
+  });
 
   return res.json({ ok: true, accessToken, client: toSafeClient(client) });
 }

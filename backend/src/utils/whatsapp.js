@@ -102,3 +102,58 @@ export async function sendLeadWhatsApp(lead) {
 
   return { sent: failed.length < results.length, failed: failed.length, total: results.length };
 }
+
+function isOtpConfigured() {
+  return Boolean(
+    env.WHATSAPP.phoneNumberId && env.WHATSAPP.accessToken && env.WHATSAPP.otpTemplateName,
+  );
+}
+
+/**
+ * Delivers a mobile verification code to a client's own WhatsApp number.
+ *
+ * Unlike the lead alert this goes to an arbitrary user number, so the 24h
+ * free-form window never applies — it must use an approved Meta template of
+ * category AUTHENTICATION (WHATSAPP_OTP_TEMPLATE_NAME). Those templates take
+ * the code as body placeholder {{1}} and repeat it on the copy-code button.
+ *
+ * Never throws: the caller falls back to emailing the code when this returns
+ * `sent: false`, so a WhatsApp outage can't lock a client out of verification.
+ */
+export async function sendOtpWhatsApp(to, code) {
+  if (!isOtpConfigured()) {
+    return { sent: false, reason: "not_configured" };
+  }
+
+  const recipient = String(to || "")
+    .replace(/[^\d]/g, "")
+    .replace(/^0+/, "");
+  if (recipient.length < 8) {
+    return { sent: false, reason: "invalid_number" };
+  }
+
+  try {
+    await postToGraph({
+      messaging_product: "whatsapp",
+      to: recipient,
+      type: "template",
+      template: {
+        name: env.WHATSAPP.otpTemplateName,
+        language: { code: env.WHATSAPP.otpTemplateLang },
+        components: [
+          { type: "body", parameters: [{ type: "text", text: code }] },
+          {
+            type: "button",
+            sub_type: "url",
+            index: "0",
+            parameters: [{ type: "text", text: code }],
+          },
+        ],
+      },
+    });
+    return { sent: true };
+  } catch (error) {
+    console.error("[whatsapp] OTP send failed:", error?.message ?? error);
+    return { sent: false, reason: "send_failed" };
+  }
+}

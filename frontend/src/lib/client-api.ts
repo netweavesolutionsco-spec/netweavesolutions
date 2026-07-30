@@ -59,6 +59,25 @@ export function subscribeAccessToken(l: Listener) {
   return () => listeners.delete(l);
 }
 
+/**
+ * Fired when a request came back 401 and the refresh token could not renew the
+ * session — i.e. the login has truly expired. ClientAuthProvider subscribes so
+ * it can drop the user and let the portal shell redirect to the login page,
+ * instead of leaving a raw "Invalid or expired token" error on screen.
+ */
+type ExpiredListener = () => void;
+const expiredListeners = new Set<ExpiredListener>();
+
+export function subscribeSessionExpired(l: ExpiredListener) {
+  expiredListeners.add(l);
+  return () => expiredListeners.delete(l);
+}
+
+function notifySessionExpired() {
+  accessToken = null;
+  expiredListeners.forEach((l) => l());
+}
+
 export class ApiError extends Error {
   status: number;
   data: unknown;
@@ -137,10 +156,23 @@ async function tryRefresh(): Promise<boolean> {
 }
 
 export async function apiFetch<T = unknown>(path: string, init: RequestInit = {}): Promise<T> {
+  // /auth/me deliberately participates in the refresh retry: on a hard reload
+  // the access token is gone from memory, and that first 401 -> refresh -> retry
+  // is exactly how the session is restored from the httpOnly refresh cookie.
+  const isAuthEndpoint =
+    path.startsWith("/auth/refresh") ||
+    path.startsWith("/auth/login") ||
+    path.startsWith("/auth/register");
+
   let res = await raw(path, init);
-  if (res.status === 401 && !path.startsWith("/auth/refresh") && !path.startsWith("/auth/login")) {
+  if (res.status === 401 && !isAuthEndpoint) {
     const ok = await tryRefresh();
-    if (ok) res = await raw(path, init);
+    if (ok) {
+      res = await raw(path, init);
+    } else {
+      // The refresh token is gone or rejected — the login has truly expired.
+      notifySessionExpired();
+    }
   }
   return (await parse(res)) as T;
 }
@@ -164,7 +196,11 @@ export interface ClientUser {
   phone?: string;
   companyName?: string;
   country?: string;
+  countryCode?: string;
+  whatsapp?: string;
   emailVerified?: boolean;
+  /** Derived from Supabase `app_metadata.phone_verified` (service-role only). */
+  phoneVerified?: boolean;
   profilePhotoUrl?: string;
   companyLogoUrl?: string;
   industry?: string;

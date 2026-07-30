@@ -125,9 +125,16 @@ export type AdminNotification = {
   id: string;
   title: string;
   description: string;
-  time: string;
+  /** Human-readable actor/subject, e.g. the client who triggered the event. */
+  userName?: string | null;
+  /** Source module for icon/routing: clients | projects | leads | support | meetings | payments | files | cms | blog | team | portfolio | ... */
+  relatedModule?: string | null;
   type: "info" | "success" | "warning" | "lead";
+  /** Optional admin-panel path to open when clicked. */
+  actionUrl?: string | null;
   read: boolean;
+  /** ISO timestamp of when the event occurred (admin_notifications.created_at). */
+  createdAt: string;
 };
 
 export const notifications: AdminNotification[] = [];

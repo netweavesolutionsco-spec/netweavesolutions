@@ -65,6 +65,34 @@ async function insertNotification(clientId, type, title, body, actionUrl = null)
   });
 }
 
+/**
+ * Records an admin-facing notification in the shared `admin_notifications`
+ * table (read by the Admin Panel via the publishable Supabase client + realtime).
+ * Non-fatal: a failure here must never break the client action that triggered it.
+ */
+export async function insertAdminNotification({
+  title,
+  description = "",
+  userName = null,
+  relatedModule = null,
+  type = "info",
+  actionUrl = null,
+}) {
+  try {
+    const { error } = await supabaseAdmin.from("admin_notifications").insert({
+      title,
+      description,
+      user_name: userName,
+      related_module: relatedModule,
+      type,
+      action_url: actionUrl,
+    });
+    if (error) console.error("admin_notifications insert failed:", error.message);
+  } catch (err) {
+    console.error("admin_notifications insert threw:", err?.message ?? err);
+  }
+}
+
 function projectPayload(input, clientId) {
   return clean({
     client_id: clientId,
@@ -225,6 +253,14 @@ export async function createProject(client, input) {
     `${data.name} has been sent to the Netweavesolutions team.`,
     `/client/projects/${data.id}`,
   );
+  await insertAdminNotification({
+    title: "New project created",
+    description: data.name,
+    userName: client.fullName || client.email,
+    relatedModule: "projects",
+    type: "success",
+    actionUrl: `/admin/projects`,
+  });
 
   return camelize(data);
 }
@@ -381,6 +417,14 @@ export async function createMessage(client, input) {
     .single();
   if (error) throw error;
   await recordActivity(client.id, client.id, "message_sent", "Message sent to the team", {}, input.projectId ?? null);
+  await insertAdminNotification({
+    title: "New client message",
+    description: input.subject || data.body?.slice(0, 120) || "New message received",
+    userName: client.fullName || client.email,
+    relatedModule: "messages",
+    type: "info",
+    actionUrl: "/admin/messages",
+  });
   return camelize(data);
 }
 
@@ -403,7 +447,89 @@ export async function createSupportRequest(client, input) {
   if (error) throw error;
   await recordActivity(client.id, client.id, "support_requested", `Support request: ${data.subject}`, {}, input.projectId ?? null);
   await insertNotification(client.id, "support_request", "Support request received", data.subject, "/client/support");
+  await insertAdminNotification({
+    title: "New support request",
+    description: data.subject,
+    userName: client.fullName || client.email,
+    relatedModule: "support",
+    type: data.priority === "high" || data.priority === "urgent" ? "warning" : "info",
+    actionUrl: "/admin/support",
+  });
   return camelize(data);
+}
+
+/**
+ * Persists a project brief submitted from the Contact page by a signed-in
+ * client. Identity is taken from the authenticated session rather than the
+ * form body, so the Admin Panel always shows a real, verified client.
+ *
+ * Duplicate handling mirrors leads.service.js: an identical requirement from
+ * the same client within a few minutes is treated as a double submit and the
+ * existing row is returned instead of creating a second one.
+ */
+const REQUIREMENT_DUPLICATE_WINDOW_MS = 5 * 60 * 1000;
+
+export async function createProjectRequirement(client, input) {
+  if (input.projectId) await requireProject(client.id, input.projectId);
+
+  const sinceIso = new Date(Date.now() - REQUIREMENT_DUPLICATE_WINDOW_MS).toISOString();
+  const { data: existing } = await supabaseAdmin
+    .from("project_requirements")
+    .select("*")
+    .eq("client_id", client.id)
+    .eq("requirement", input.requirement)
+    .gte("created_at", sinceIso)
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    return { requirement: camelize(existing[0]), duplicate: true };
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("project_requirements")
+    .insert({
+      client_id: client.id,
+      project_id: input.projectId ?? null,
+      client_name: input.name?.trim() || client.fullName || client.email,
+      client_email: client.email,
+      phone: input.phone ?? null,
+      company: input.company ?? null,
+      service: input.service ?? null,
+      budget: input.budget ?? null,
+      timeline: input.timeline ?? null,
+      requirement: input.requirement,
+      source: input.source ?? "contact-page",
+      status: "new",
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+
+  await recordActivity(
+    client.id,
+    client.id,
+    "requirement_submitted",
+    "Project brief submitted from the Contact page",
+    {},
+    input.projectId ?? null,
+  );
+  await insertNotification(
+    client.id,
+    "requirement_submitted",
+    "Project brief received",
+    "Our team has your brief and will respond shortly.",
+    "/client",
+  );
+  await insertAdminNotification({
+    title: "New requirement submission",
+    description: data.service ? `${data.service} — ${data.requirement?.slice(0, 100)}` : data.requirement?.slice(0, 120),
+    userName: data.client_name || client.fullName || client.email,
+    relatedModule: "requirements",
+    type: "lead",
+    actionUrl: "/admin/leads",
+  });
+
+  return { requirement: camelize(data), duplicate: false };
 }
 
 export async function updateMessage(client, messageId, input) {
@@ -446,6 +572,14 @@ export async function uploadFile(client, input) {
     .single();
   if (error) throw error;
   await recordActivity(client.id, client.id, "file_uploaded", `File uploaded: ${input.name}`, {}, input.projectId ?? null);
+  await insertAdminNotification({
+    title: "File uploaded",
+    description: input.name,
+    userName: client.fullName || client.email,
+    relatedModule: "files",
+    type: "info",
+    actionUrl: "/admin/files",
+  });
   return camelize((await withSignedFileUrls([data]))[0]);
 }
 
@@ -496,6 +630,14 @@ export async function respondToQuotation(client, quotationId, input) {
     .single();
   if (error) throw error;
   await recordActivity(client.id, client.id, `quotation_${input.status}`, `Quotation ${input.status}`, {}, data.project_id);
+  await insertAdminNotification({
+    title: `Quotation ${input.status}`,
+    description: input.revisionNote || `Client responded to a quotation: ${input.status}`,
+    userName: client.fullName || client.email,
+    relatedModule: "quotations",
+    type: input.status === "accepted" ? "success" : input.status === "rejected" ? "warning" : "info",
+    actionUrl: "/admin/projects",
+  });
   return camelize(data);
 }
 
@@ -523,6 +665,14 @@ export async function createMeeting(client, input) {
   if (error) throw error;
   await recordActivity(client.id, client.id, "meeting_requested", `Meeting requested: ${data.title}`, {}, input.projectId ?? null);
   await insertNotification(client.id, "meeting_scheduled", "Meeting request received", data.title, "/client/meetings");
+  await insertAdminNotification({
+    title: "Meeting scheduled",
+    description: data.title,
+    userName: client.fullName || client.email,
+    relatedModule: "meetings",
+    type: "info",
+    actionUrl: "/admin/meetings",
+  });
   return camelize(data);
 }
 
@@ -543,6 +693,16 @@ export async function updateMeeting(client, meetingId, input) {
     .single();
   if (error) throw error;
   await recordActivity(client.id, client.id, "meeting_updated", `Meeting updated: ${data.title}`, {}, data.project_id);
+  if (input.status) {
+    await insertAdminNotification({
+      title: `Meeting ${input.status}`,
+      description: data.title,
+      userName: client.fullName || client.email,
+      relatedModule: "meetings",
+      type: input.status === "accepted" ? "success" : input.status === "rejected" || input.status === "cancelled" ? "warning" : "info",
+      actionUrl: "/admin/meetings",
+    });
+  }
   return camelize(data);
 }
 

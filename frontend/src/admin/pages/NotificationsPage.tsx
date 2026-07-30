@@ -1,8 +1,9 @@
 import { PageHeader } from "@/admin/components/PageHeader";
 import { useAdminUI } from "@/admin/context/AdminUIContext";
 import { Button } from "@/components/ui/button";
-import { CheckCheck, Trash2, Circle, Info, TriangleAlert, CheckCircle2, Inbox } from "lucide-react";
+import { CheckCheck, Check, Trash2, Circle, Info, TriangleAlert, CheckCircle2, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatRelativeTime } from "@/admin/lib/format-time";
 import type { AdminNotification } from "@/admin/data/dummy";
 
 const typeIcon: Record<AdminNotification["type"], typeof Info> = {
@@ -19,7 +20,8 @@ const typeColor: Record<AdminNotification["type"], string> = {
 };
 
 export function NotificationsPage() {
-  const { notifications, markAllRead, clearNotifications, removeNotification } = useAdminUI();
+  const { notifications, markRead, markAllRead, clearNotifications, removeNotification } =
+    useAdminUI();
   return (
     <div>
       <PageHeader
@@ -77,17 +79,48 @@ export function NotificationsPage() {
                         <Circle className="h-1.5 w-1.5 fill-[var(--brand)] text-[var(--brand)]" />
                       )}
                     </div>
-                    <div className="text-xs text-muted-foreground">{n.description}</div>
+                    {n.description && (
+                      <div className="text-xs text-muted-foreground">{n.description}</div>
+                    )}
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+                      <span>{formatRelativeTime(n.createdAt)}</span>
+                      {n.userName && (
+                        <>
+                          <span aria-hidden>·</span>
+                          <span className="truncate">{n.userName}</span>
+                        </>
+                      )}
+                      {n.relatedModule && (
+                        <span className="rounded bg-muted px-1.5 py-0.5 capitalize">
+                          {n.relatedModule}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-xs text-muted-foreground">{n.time}</div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 opacity-0 group-hover:opacity-100"
-                    onClick={() => removeNotification(n.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
+                  <div className="flex shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100">
+                    {!n.read && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => markRead(n.id)}
+                        aria-label="Mark read"
+                        title="Mark read"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => removeNotification(n.id)}
+                      aria-label="Delete"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </li>
               );
             })}

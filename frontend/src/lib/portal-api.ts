@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "@/lib/client-api";
+import { api, ApiError } from "@/lib/client-api";
+import { useClientAuth } from "@/hooks/use-client-auth";
 
 export type ProjectStatus =
   | "submitted"
@@ -181,6 +182,22 @@ export interface SupportRequest {
   createdAt: string;
 }
 
+export interface ProjectRequirement {
+  id: string;
+  projectId?: string | null;
+  clientName: string;
+  clientEmail: string;
+  phone?: string | null;
+  company?: string | null;
+  service?: string | null;
+  budget?: string | null;
+  timeline?: string | null;
+  requirement: string;
+  source: string;
+  status: "new" | "in_review" | "quoted" | "accepted" | "rejected" | "closed";
+  createdAt: string;
+}
+
 export interface ClientNotification {
   id: string;
   type: string;
@@ -272,29 +289,62 @@ function qs(params?: Record<string, unknown>) {
   return value ? `?${value}` : "";
 }
 
+/**
+ * Portal reads must never fire before the session is restored. On a hard reload
+ * the access token lives only in memory, so a query that runs while
+ * ClientAuthProvider is still bootstrapping hits the API with no Authorization
+ * header and surfaces a raw 401 ("Invalid or expired token") in the UI. Gating
+ * on the resolved session — and letting the shell handle redirects — keeps the
+ * portal quiet while the token is being refreshed.
+ */
+export function usePortalSessionReady(): boolean {
+  const { user, loading } = useClientAuth();
+  return !loading && Boolean(user);
+}
+
+/** Auth failures are terminal: client-api already retried once after a refresh. */
+function retryPortal(failureCount: number, error: unknown) {
+  if (error instanceof ApiError && (error.status === 401 || error.status === 403)) return false;
+  return failureCount < 2;
+}
+
 export function usePortalDashboard() {
-  return useQuery({ queryKey: portalKeys.dashboard, queryFn: () => api.get<DashboardData>("/portal/dashboard") });
+  const ready = usePortalSessionReady();
+  return useQuery({
+    queryKey: portalKeys.dashboard,
+    queryFn: () => api.get<DashboardData>("/portal/dashboard"),
+    enabled: ready,
+    retry: retryPortal,
+  });
 }
 
 export function useProjects(filters?: { status?: string; search?: string }) {
+  const ready = usePortalSessionReady();
   return useQuery({
     queryKey: portalKeys.projects(filters),
     queryFn: () => api.get<Paginated<ClientProject>>(`/portal/projects${qs(filters)}`),
+    enabled: ready,
+    retry: retryPortal,
   });
 }
 
 export function useProject(projectId: string) {
+  const ready = usePortalSessionReady();
   return useQuery({
     queryKey: portalKeys.project(projectId),
     queryFn: () => api.get<ProjectDetail>(`/portal/projects/${projectId}`),
-    enabled: Boolean(projectId),
+    enabled: ready && Boolean(projectId),
+    retry: retryPortal,
   });
 }
 
 export function usePortalCollection<T>(name: string, filters?: Record<string, unknown>) {
+  const ready = usePortalSessionReady();
   return useQuery({
     queryKey: portalKeys.collection(name, filters),
     queryFn: () => api.get<Paginated<T>>(`/portal/${name}${qs(filters)}`),
+    enabled: ready,
+    retry: retryPortal,
   });
 }
 
@@ -398,6 +448,31 @@ export function useCreateSupport() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: portalKeys.dashboard });
       void queryClient.invalidateQueries({ queryKey: ["portal", "support"] });
+    },
+  });
+}
+
+/**
+ * Submits a project brief from the Contact page. Requires a signed-in client:
+ * the backend derives the client identity from the session, so the brief is
+ * always attributable in the admin "Project Requirements" section.
+ */
+export function useCreateRequirement() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      name?: string;
+      phone?: string;
+      company?: string;
+      service?: string;
+      budget?: string;
+      timeline?: string;
+      requirement: string;
+      source?: string;
+    }) => api.post<{ requirement: ProjectRequirement }>("/portal/requirements", input),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: portalKeys.dashboard });
+      void queryClient.invalidateQueries({ queryKey: ["portal", "notifications"] });
     },
   });
 }

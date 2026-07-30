@@ -9,7 +9,13 @@ import {
 } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
-import { api, isApiConfigured, setAccessToken, type ClientUser } from "@/lib/client-api";
+import {
+  api,
+  isApiConfigured,
+  setAccessToken,
+  subscribeSessionExpired,
+  type ClientUser,
+} from "@/lib/client-api";
 import { supabase } from "@/integrations/supabase/client";
 
 export interface RegisterPayload {
@@ -38,10 +44,19 @@ interface AuthState {
   loading: boolean;
   configured: boolean;
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
-  register: (payload: RegisterPayload) => Promise<{ message: string }>;
+  register: (
+    payload: RegisterPayload,
+  ) => Promise<{ message: string; requiresEmailVerification: boolean }>;
   loginWithGoogle: () => Promise<void>;
   completeOAuth: () => Promise<void>;
   resendVerification: (email: string) => Promise<void>;
+  /** Requests a mobile OTP for the signed-in client's own number. */
+  sendPhoneOtp: (
+    phone?: string,
+    countryCode?: string,
+  ) => Promise<{ channel: string; phone: string; message: string }>;
+  /** Redeems a mobile OTP and refreshes the cached client record. */
+  verifyPhoneOtp: (otp: string) => Promise<{ message: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   updateProfile: (updates: Partial<ClientUser>) => Promise<void>;
@@ -62,7 +77,12 @@ function normalizeClientUser(raw: Partial<ClientUser> | null | undefined): Clien
     phone: raw.phone ?? "",
     companyName: raw.companyName ?? "",
     country: raw.country ?? "",
-    emailVerified: raw.emailVerified ?? true,
+    countryCode: raw.countryCode ?? "",
+    whatsapp: raw.whatsapp ?? "",
+    // Default to false, not true: the backend derives these from Supabase, and
+    // an optimistic `true` would render an unverified account as verified.
+    emailVerified: raw.emailVerified ?? false,
+    phoneVerified: raw.phoneVerified ?? false,
     profilePhotoUrl: raw.profilePhotoUrl ?? "",
     companyLogoUrl: raw.companyLogoUrl ?? "",
     industry: raw.industry ?? "",
@@ -86,7 +106,7 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const data = await api.get<{ client?: Partial<ClientUser> }>('/auth/me');
+      const data = await api.get<{ client?: Partial<ClientUser> }>("/auth/me");
       setUser(normalizeClientUser(data.client ?? null));
     } catch (error) {
       console.warn("Client session refresh failed:", error);
@@ -101,46 +121,62 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
     void refreshUser();
   }, [refreshUser]);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      const data = await api.post<{ accessToken?: string; client?: Partial<ClientUser> }>('/auth/login', {
+  // When a refresh attempt fails the session is over. Dropping the user here
+  // lets ClientPortalShell perform its normal redirect to /client/login with a
+  // `redirect` param, rather than leaving a token error rendered in the page.
+  useEffect(() => {
+    return subscribeSessionExpired(() => {
+      setUser(null);
+      setLoading(false);
+    });
+  }, []);
+
+  const login = useCallback(async (email: string, password: string, rememberMe = true) => {
+    const data = await api.post<{ accessToken?: string; client?: Partial<ClientUser> }>(
+      "/auth/login",
+      {
         email,
         password,
-        rememberMe: true,
-      });
-      setAccessToken(data.accessToken ?? null);
-      setUser(normalizeClientUser(data.client ?? null));
-    },
-    [],
-  );
+        rememberMe,
+      },
+    );
+    setAccessToken(data.accessToken ?? null);
+    setUser(normalizeClientUser(data.client ?? null));
+  }, []);
 
   const register = useCallback(async (payload: RegisterPayload) => {
-    const data = await api.post<{ message?: string }>('/auth/register', {
-      fullName: payload.fullName,
-      email: payload.email,
-      phone: payload.phone,
-      countryCode: payload.countryCode,
-      whatsapp: payload.whatsapp,
-      companyName: payload.companyName,
-      website: payload.website,
-      industry: payload.industry,
-      country: payload.country,
-      state: payload.state,
-      city: payload.city,
-      address: payload.address,
-      gstNumber: payload.gstNumber,
-      password: payload.password,
-      confirmPassword: payload.confirmPassword,
-      referralCode: payload.referralCode,
-      acceptTerms: payload.acceptTerms,
-      newsletter: payload.newsletter ?? false,
-    });
+    const data = await api.post<{ message?: string; requiresEmailVerification?: boolean }>(
+      "/auth/register",
+      {
+        fullName: payload.fullName,
+        email: payload.email,
+        phone: payload.phone,
+        countryCode: payload.countryCode,
+        whatsapp: payload.whatsapp,
+        companyName: payload.companyName,
+        website: payload.website,
+        industry: payload.industry,
+        country: payload.country,
+        state: payload.state,
+        city: payload.city,
+        address: payload.address,
+        gstNumber: payload.gstNumber,
+        password: payload.password,
+        confirmPassword: payload.confirmPassword,
+        referralCode: payload.referralCode,
+        acceptTerms: payload.acceptTerms,
+        newsletter: payload.newsletter ?? false,
+      },
+    );
 
     setAccessToken(null);
     setUser(null);
 
     return {
-      message: data.message ?? 'Account created successfully. You can sign in now.',
+      message:
+        data.message ??
+        "Account created. Check your inbox for the verification link — you can sign in once your email is verified.",
+      requiresEmailVerification: data.requiresEmailVerification ?? true,
     };
   }, []);
 
@@ -148,9 +184,7 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
   // lands on /client/oauth-callback, which calls completeOAuth() below.
   const loginWithGoogle = useCallback(async () => {
     const redirectTo =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/client/oauth-callback`
-        : undefined;
+      typeof window !== "undefined" ? `${window.location.origin}/client/oauth-callback` : undefined;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
@@ -168,7 +202,7 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
       throw new Error(error?.message ?? "Google sign-in did not complete.");
     }
     const synced = await api.post<{ accessToken?: string; client?: Partial<ClientUser> }>(
-      '/auth/oauth/sync',
+      "/auth/oauth/sync",
       {
         accessToken: data.session.access_token,
         refreshToken: data.session.refresh_token,
@@ -182,12 +216,43 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const resendVerification = useCallback(async (email: string) => {
-    await api.post('/auth/resend-verification', { email });
+    await api.post("/auth/resend-verification", { email });
   }, []);
+
+  // Mobile verification. The backend binds the challenge to the signed-in
+  // client's own record, so no identifier is trusted from the browser beyond an
+  // optional number to save first. Delivery falls back from WhatsApp to email
+  // when WhatsApp is not configured — `channel` says which was used.
+  const sendPhoneOtp = useCallback(async (phone?: string, countryCode?: string) => {
+    const data = await api.post<{ channel?: string; phone?: string; message?: string }>(
+      "/auth/phone-otp",
+      { phone, countryCode },
+    );
+    return {
+      channel: data.channel ?? "whatsapp",
+      phone: data.phone ?? "",
+      message: data.message ?? "We sent you a 6-digit verification code.",
+    };
+  }, []);
+
+  const verifyPhoneOtp = useCallback(
+    async (otp: string) => {
+      const data = await api.post<{ message?: string; client?: Partial<ClientUser> }>(
+        "/auth/verify-phone-otp",
+        { otp },
+      );
+      // The controller returns the refreshed record; fall back to /auth/me so
+      // the verified badge updates either way.
+      if (data.client) setUser(normalizeClientUser(data.client));
+      else await refreshUser();
+      return { message: data.message ?? "Your mobile number is verified." };
+    },
+    [refreshUser],
+  );
 
   const logout = useCallback(async () => {
     try {
-      await api.post('/auth/logout');
+      await api.post("/auth/logout");
     } catch {
       // Ignore logout errors and clear local session state.
     }
@@ -215,23 +280,23 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
         companyLogoUrl: updates.companyLogoUrl,
       };
 
-      await api.put('/profile', payload);
+      await api.put("/profile", payload);
       await refreshUser();
     },
     [refreshUser],
   );
 
   const forgotPassword = useCallback(async (email: string) => {
-    await api.post('/auth/forgot-password', { email });
+    await api.post("/auth/forgot-password", { email });
   }, []);
 
   const updatePassword = useCallback(async (password: string, token?: string) => {
-    if (!token) throw new Error('A reset token is required.');
-    await api.post('/auth/reset-password', { token, password });
+    if (!token) throw new Error("A reset token is required.");
+    await api.post("/auth/reset-password", { token, password });
   }, []);
 
   const changePassword = useCallback(async (currentPassword: string, newPassword: string) => {
-    await api.post('/auth/change-password', { currentPassword, newPassword });
+    await api.post("/auth/change-password", { currentPassword, newPassword });
   }, []);
 
   const value = useMemo<AuthState>(
@@ -244,6 +309,8 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
       loginWithGoogle,
       completeOAuth,
       resendVerification,
+      sendPhoneOtp,
+      verifyPhoneOtp,
       logout,
       refreshUser,
       updateProfile,
@@ -260,6 +327,8 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
       loginWithGoogle,
       completeOAuth,
       resendVerification,
+      sendPhoneOtp,
+      verifyPhoneOtp,
       logout,
       refreshUser,
       updateProfile,

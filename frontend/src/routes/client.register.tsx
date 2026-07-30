@@ -1,6 +1,7 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,7 +10,12 @@ import { Logo } from "@/components/logo";
 import { useClientAuth } from "@/hooks/use-client-auth";
 import { cn } from "@/lib/utils";
 
+// `redirect` is forwarded from pages that require a session (e.g. the Contact
+// page brief) so the client lands back where they started after signing in.
+const search = z.object({ redirect: z.string().optional() }).catch({});
+
 export const Route = createFileRoute("/client/register")({
+  validateSearch: search,
   head: () => ({
     meta: [
       { title: "Create your Client Account — Netweavesolutions" },
@@ -46,6 +52,7 @@ const STRENGTH_COLORS = [
 function RegisterPage() {
   const { register: registerFn, configured } = useClientAuth();
   const navigate = useNavigate();
+  const { redirect } = useSearch({ from: "/client/register" });
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -86,7 +93,7 @@ function RegisterPage() {
     try {
       const res = await registerFn({ ...form, acceptTerms: true });
       toast.success(res.message || "Account created successfully. You can sign in now.");
-      navigate({ to: "/client/login", search: { email: form.email } as never });
+      navigate({ to: "/client/login", search: { email: form.email, redirect } as never });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Registration failed");
     } finally {
@@ -319,7 +326,11 @@ function RegisterPage() {
         </form>
         <p className="mt-6 text-center text-sm text-muted-foreground">
           Already have an account?{" "}
-          <Link to="/client/login" className="text-primary hover:underline">
+          <Link
+            to="/client/login"
+            search={{ redirect } as never}
+            className="text-primary hover:underline"
+          >
             Sign in
           </Link>
         </p>

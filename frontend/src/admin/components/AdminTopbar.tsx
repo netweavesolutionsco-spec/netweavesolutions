@@ -29,7 +29,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useAuthUser, useIsAdmin } from "@/hooks/useAuthUser";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
@@ -39,6 +39,7 @@ export function AdminTopbar() {
   const { theme, setTheme } = useTheme();
   const [query, setQuery] = useState("");
   const { user } = useAuthUser();
+  const navigate = useNavigate();
   const { isAdmin } = useIsAdmin();
   const [profile, setProfile] = useState<{
     display_name: string | null;
@@ -114,7 +115,11 @@ export function AdminTopbar() {
               <DropdownMenuItem>
                 <Sparkles className="mr-2 h-4 w-4" /> New Blog Post
               </DropdownMenuItem>
-              <DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() =>
+                  navigate({ to: "/admin/projects", search: { new: "1" } as never })
+                }
+              >
                 <Sparkles className="mr-2 h-4 w-4" /> New Project
               </DropdownMenuItem>
               <DropdownMenuItem>

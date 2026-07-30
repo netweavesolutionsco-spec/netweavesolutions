@@ -47,6 +47,9 @@ function normalizeClientRecord(authUser, profile, roles = []) {
     id: authUser?.id ?? profile?.id,
     email: authUser?.email ?? profile?.email ?? "",
     emailVerified: Boolean(authUser?.email_confirmed_at),
+    // Mobile verification lives in Supabase `app_metadata` (service-role only,
+    // never writable by the client) so it needs no extra profiles column.
+    phoneVerified: Boolean(authUser?.app_metadata?.phone_verified),
     fullName: profile?.display_name ?? "",
     phone: profile?.phone ?? "",
     whatsapp: profile?.whatsapp ?? "",
@@ -284,7 +287,37 @@ export async function updateClient(id, updates) {
 }
 
 /**
- * Records a successful login: bumps login_count and stamps last_login.
+ * Reads the Supabase `app_metadata` bag for a user.
+ *
+ * Mobile verification state (and the pending OTP challenge) lives here rather
+ * than in `profiles` because `app_metadata` is writable only with the service
+ * role key — a signed-in client can never mark its own number as verified.
+ */
+export async function getAppMetadata(id) {
+  const authUser = await fetchAuthUserById(id);
+  return authUser?.app_metadata ?? {};
+}
+
+/**
+ * Merges keys into a user's `app_metadata`. Pass `null` for a key to clear it.
+ */
+export async function setAppMetadata(id, patch) {
+  const current = await getAppMetadata(id);
+  const next = { ...current, ...patch };
+  Object.keys(patch).forEach((key) => {
+    if (patch[key] === null) delete next[key];
+  });
+
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(id, { app_metadata: next });
+  if (error) {
+    throw error;
+  }
+  return next;
+}
+
+/**
+ * Increments the login counter and stamps `last_login` for a client.
+ *
  * Best-effort — never throws, so it can't block a valid sign-in.
  */
 export async function recordLogin(id) {

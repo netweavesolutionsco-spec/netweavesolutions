@@ -4,6 +4,8 @@ import {
   Globe,
   Briefcase,
   FolderKanban,
+  Layers,
+  ClipboardList,
   Newspaper,
   Tag,
   MessageSquareQuote,
@@ -54,6 +56,13 @@ const nav = [
       { to: "/admin/pricing", label: "Pricing", icon: Tag },
       { to: "/admin/testimonials", label: "Testimonials", icon: MessageSquareQuote },
       { to: "/admin/media", label: "Media", icon: ImageIcon },
+    ],
+  },
+  {
+    group: "Client Work",
+    items: [
+      { to: "/admin/projects", label: "Projects", icon: Layers },
+      { to: "/admin/requirements", label: "Project Requirements", icon: ClipboardList },
     ],
   },
   {

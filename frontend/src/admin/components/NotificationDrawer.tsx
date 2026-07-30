@@ -1,5 +1,6 @@
 import {
   CheckCheck,
+  Check,
   Trash2,
   X,
   Circle,
@@ -11,6 +12,7 @@ import {
 import { useAdminUI } from "@/admin/context/AdminUIContext";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { formatRelativeTime } from "@/admin/lib/format-time";
 import type { AdminNotification } from "@/admin/data/dummy";
 
 const typeIcon: Record<AdminNotification["type"], typeof Info> = {
@@ -32,6 +34,7 @@ export function NotificationDrawer() {
     notifOpen,
     setNotifOpen,
     notifications,
+    markRead,
     markAllRead,
     clearNotifications,
     removeNotification,
@@ -123,16 +126,44 @@ export function NotificationDrawer() {
                           <Circle className="h-1.5 w-1.5 fill-(--brand) text-(--brand)" />
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground">{n.description}</p>
-                      <p className="mt-1 text-[10px] text-muted-foreground">{n.time}</p>
+                      {n.description && (
+                        <p className="text-xs text-muted-foreground">{n.description}</p>
+                      )}
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground">
+                        <span>{formatRelativeTime(n.createdAt)}</span>
+                        {n.userName && (
+                          <>
+                            <span aria-hidden>·</span>
+                            <span className="truncate">{n.userName}</span>
+                          </>
+                        )}
+                        {n.relatedModule && (
+                          <span className="rounded bg-muted px-1.5 py-0.5 capitalize">
+                            {n.relatedModule}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <button
-                      className="rounded p-1 text-muted-foreground opacity-0 hover:bg-background group-hover:opacity-100"
-                      onClick={() => removeNotification(n.id)}
-                      aria-label="Dismiss"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="flex shrink-0 flex-col items-center gap-1 opacity-0 group-hover:opacity-100">
+                      {!n.read && (
+                        <button
+                          className="rounded p-1 text-muted-foreground hover:bg-background hover:text-foreground"
+                          onClick={() => markRead(n.id)}
+                          aria-label="Mark read"
+                          title="Mark read"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                      <button
+                        className="rounded p-1 text-muted-foreground hover:bg-background"
+                        onClick={() => removeNotification(n.id)}
+                        aria-label="Dismiss"
+                        title="Delete"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </li>
                 );
               })}

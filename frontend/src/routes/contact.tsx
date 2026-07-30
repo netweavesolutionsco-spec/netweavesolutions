@@ -1,17 +1,18 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { z } from "zod";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { motion } from "motion/react";
-import { Mail, Phone, MapPin, MessageCircle, Send, CheckCircle2, Loader2 } from "lucide-react";
+import { Mail, Phone, MapPin, MessageCircle, Send, CheckCircle2, Loader2, Lock } from "lucide-react";
 import { Section } from "@/components/section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { brand } from "@/data/brand";
-import { submitLead } from "@/lib/leads";
+import { useClientAuth } from "@/hooks/use-client-auth";
+import { useCreateRequirement } from "@/lib/portal-api";
 
 const services = [
   "Website Development",
@@ -22,6 +23,13 @@ const services = [
   "AI Chatbot",
 ];
 const budgets = ["₹15,000 - ₹35,000", "₹35,000 - ₹75,000", "₹75,000 - ₹1,50,000", "₹1,50,000+"];
+const timelines = [
+  "ASAP (within 2 weeks)",
+  "2 - 4 weeks",
+  "1 - 2 months",
+  "3 - 6 months",
+  "Flexible",
+];
 
 const schema = z.object({
   name: z.string().trim().min(2, "Please enter your name").max(80),
@@ -29,6 +37,7 @@ const schema = z.object({
   phone: z.string().trim().max(30).optional().or(z.literal("")),
   service: z.string().trim().min(1, "Choose a service"),
   budget: z.string().trim().min(1, "Choose a budget"),
+  timeline: z.string().trim().max(120).optional().or(z.literal("")),
   message: z.string().trim().min(10, "Tell us a bit more").max(2000),
 });
 
@@ -54,8 +63,17 @@ export const Route = createFileRoute("/contact")({
 
 function Contact() {
   const [errors, setErrors] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState<{ name: string; email: string } | null>(null);
+  // The brief is a client-portal submission, so it reuses the existing client
+  // session rather than the anonymous /leads endpoint.
+  const { user, loading: authLoading } = useClientAuth();
+  const navigate = useNavigate();
+  const createRequirement = useCreateRequirement();
+  const loading = createRequirement.isPending;
+
+  // Sending the current path as `redirect` is what brings the client back to
+  // this page (and this form) once they finish logging in or registering.
+  const authRedirect = { redirect: "/contact" } as never;
 
   const fireConfetti = () => {
     const end = Date.now() + 800;
@@ -69,6 +87,16 @@ function Contact() {
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    // Defence in depth: the form is only rendered for signed-in clients, but a
+    // session can expire while the page is open.
+    if (!user) {
+      toast.info("Please login or create an account to send your brief.");
+      navigate({ to: "/client/login", search: authRedirect });
+      return;
+    }
+    if (loading) return;
+
     const formEl = e.currentTarget;
     const form = new FormData(formEl);
     const data = Object.fromEntries(form) as Record<string, string>;
@@ -80,16 +108,22 @@ function Contact() {
       return;
     }
     setErrors({});
-    setLoading(true);
     try {
-      await submitLead({ ...parsed.data, company: "", source: "contact-page" });
+      await createRequirement.mutateAsync({
+        name: parsed.data.name,
+        phone: parsed.data.phone || undefined,
+        company: user.companyName || undefined,
+        service: parsed.data.service,
+        budget: parsed.data.budget,
+        timeline: parsed.data.timeline || undefined,
+        requirement: parsed.data.message,
+        source: "contact-page",
+      });
       setSuccess({ name: parsed.data.name, email: parsed.data.email });
       fireConfetti();
       formEl.reset();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not send your message.");
-    } finally {
-      setLoading(false);
+      toast.error(err instanceof Error ? err.message : "Could not send your brief.");
     }
   };
 
@@ -242,11 +276,57 @@ function Contact() {
                 Send Another Inquiry
               </Button>
             </motion.div>
+          ) : authLoading ? (
+            <div className="flex min-h-[420px] items-center justify-center">
+              <Loader2 className="h-6 w-6 animate-spin text-white/50" />
+            </div>
+          ) : !user ? (
+            <div className="py-10 text-center">
+              <div className="mx-auto grid h-16 w-16 place-items-center rounded-full border border-indigo-500/40 bg-indigo-500/20">
+                <Lock className="h-7 w-7 text-indigo-300" />
+              </div>
+              <h3 className="mt-6 text-2xl font-bold text-white">Sign in to send your brief</h3>
+              <p className="mx-auto mt-3 max-w-md text-white/70">
+                Project briefs are tied to your client account so you can track our reply, share
+                files and receive quotations in your portal. It only takes a minute — we'll bring you
+                straight back here.
+              </p>
+              <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                <Button
+                  asChild
+                  size="lg"
+                  className="w-full rounded-full bg-linear-to-r from-indigo-500 to-cyan-500 font-semibold text-white hover:from-indigo-400 hover:to-cyan-400 sm:w-auto"
+                >
+                  <Link to="/client/login" search={authRedirect}>
+                    Login to Continue
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="w-full rounded-full sm:w-auto">
+                  <Link to="/client/register" search={authRedirect}>
+                    Create an Account
+                  </Link>
+                </Button>
+              </div>
+              <p className="mt-6 text-xs text-white/50">
+                Prefer not to sign in? Email us at{" "}
+                <a
+                  className="text-cyan-300 hover:underline"
+                  href="mailto:netweavesolutions.co@gmail.com"
+                >
+                  netweavesolutions.co@gmail.com
+                </a>{" "}
+                or message us on WhatsApp.
+              </p>
+            </div>
           ) : (
             <form onSubmit={onSubmit} noValidate className="space-y-5">
               <div>
                 <h3 className="text-xl font-semibold text-white">Send Us a Direct Brief</h3>
-                <p className="text-sm text-white/60">We reply within one working day.</p>
+                <p className="text-sm text-white/60">
+                  Signed in as{" "}
+                  <span className="font-medium text-cyan-300">{user.email}</span> · we reply within
+                  one working day.
+                </p>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
@@ -255,6 +335,7 @@ function Contact() {
                   <Input
                     id="name"
                     name="name"
+                    defaultValue={user.fullName}
                     placeholder="Jane Doe"
                     className="mt-1.5 bg-white/5 border-white/10"
                   />
@@ -266,8 +347,10 @@ function Contact() {
                     id="email"
                     name="email"
                     type="email"
+                    defaultValue={user.email}
+                    readOnly
                     placeholder="jane@company.com"
-                    className="mt-1.5 bg-white/5 border-white/10"
+                    className="mt-1.5 bg-white/5 border-white/10 text-white/70"
                   />
                   {errors.email && <p className="mt-1 text-xs text-red-400">{errors.email}</p>}
                 </div>
@@ -280,6 +363,7 @@ function Contact() {
                     id="phone"
                     name="phone"
                     type="tel"
+                    defaultValue={user.phone}
                     placeholder="+91 98765 43210"
                     className="mt-1.5 bg-white/5 border-white/10"
                   />
@@ -305,24 +389,47 @@ function Contact() {
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="budget">Estimated Budget *</Label>
-                <select
-                  id="budget"
-                  name="budget"
-                  defaultValue=""
-                  className="mt-1.5 w-full h-10 rounded-md bg-white/5 border border-white/10 px-3 text-sm text-white"
-                >
-                  <option value="" disabled className="bg-slate-900">
-                    Select a budget range…
-                  </option>
-                  {budgets.map((b) => (
-                    <option key={b} value={b} className="bg-slate-900">
-                      {b}
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <Label htmlFor="budget">Estimated Budget *</Label>
+                  <select
+                    id="budget"
+                    name="budget"
+                    defaultValue=""
+                    className="mt-1.5 w-full h-10 rounded-md bg-white/5 border border-white/10 px-3 text-sm text-white"
+                  >
+                    <option value="" disabled className="bg-slate-900">
+                      Select a budget range…
                     </option>
-                  ))}
-                </select>
-                {errors.budget && <p className="mt-1 text-xs text-red-400">{errors.budget}</p>}
+                    {budgets.map((b) => (
+                      <option key={b} value={b} className="bg-slate-900">
+                        {b}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.budget && <p className="mt-1 text-xs text-red-400">{errors.budget}</p>}
+                </div>
+                <div>
+                  <Label htmlFor="timeline">Expected Timeline</Label>
+                  <select
+                    id="timeline"
+                    name="timeline"
+                    defaultValue=""
+                    className="mt-1.5 w-full h-10 rounded-md bg-white/5 border border-white/10 px-3 text-sm text-white"
+                  >
+                    <option value="" className="bg-slate-900">
+                      Not sure yet
+                    </option>
+                    {timelines.map((t) => (
+                      <option key={t} value={t} className="bg-slate-900">
+                        {t}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.timeline && (
+                    <p className="mt-1 text-xs text-red-400">{errors.timeline}</p>
+                  )}
+                </div>
               </div>
 
               <div>

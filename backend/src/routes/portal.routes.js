@@ -113,6 +113,32 @@ const supportSchema = z.object({
   priority: z.enum(["low", "normal", "high", "urgent"]).default("normal"),
 });
 
+const optionalText = (max) =>
+  z
+    .string()
+    .trim()
+    .max(max)
+    .optional()
+    .or(z.literal(""))
+    .transform((v) => (v ? v : null));
+
+const requirementSchema = z.object({
+  projectId: uuid.optional(),
+  name: z.string().trim().min(2).max(80).optional(),
+  phone: optionalText(30),
+  company: optionalText(120),
+  service: optionalText(120),
+  budget: optionalText(60),
+  timeline: optionalText(120),
+  requirement: z.string().trim().min(10).max(5000),
+  source: z
+    .string()
+    .trim()
+    .max(60)
+    .optional()
+    .transform((v) => v || "contact-page"),
+});
+
 router.use(requireAuth);
 
 router.get("/dashboard", asyncHandler(controller.dashboard));
@@ -128,6 +154,7 @@ router.get("/:collection(files|messages|quotations|invoices|payments|meetings|su
 router.post("/messages", validate(messageSchema), asyncHandler(controller.createMessage));
 router.patch("/messages/:messageId", validate(messageUpdateSchema), asyncHandler(controller.updateMessage));
 router.post("/support", validate(supportSchema), asyncHandler(controller.createSupportRequest));
+router.post("/requirements", validate(requirementSchema), asyncHandler(controller.createProjectRequirement));
 router.post("/files/upload", validate(fileUploadSchema), asyncHandler(controller.uploadFile));
 router.patch("/files/:fileId", validate(fileUpdateSchema), asyncHandler(controller.updateFile));
 router.delete("/files/:fileId", asyncHandler(controller.deleteFile));
