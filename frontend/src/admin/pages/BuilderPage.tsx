@@ -1260,7 +1260,14 @@ function SectionBody({ section, theme }: { section: Section; theme: Theme }) {
             {section.heading || "Our services"}
           </h2>
           <div className="grid gap-4 md:grid-cols-3">
-            {["Web Apps", "Mobile", "AI & ML", "DevOps", "UI/UX", "Consulting"].map((s) => (
+            {[
+              "Web Apps",
+              "Mobile Apps",
+              "Custom Software",
+              "ERP Systems",
+              "UI/UX",
+              "Dashboards",
+            ].map((s) => (
               <div key={s} className="p-5" style={card}>
                 <div className="mb-2 h-8 w-8 rounded-md" style={{ background: theme.accent }} />
                 <div className="font-semibold" style={{ color: t }}>
@@ -1437,4 +1444,3 @@ function SectionBody({ section, theme }: { section: Section; theme: Theme }) {
       );
   }
 }
-

@@ -61,8 +61,8 @@ const values = [
   },
   {
     icon: Sparkles,
-    title: "AI-Native Capabilities",
-    body: "Gemini AI workflow integration, RAG pipelines and agentic tool use.",
+    title: "Product-Led Delivery",
+    body: "Clear product decisions, focused scope and maintainable systems from the first sprint.",
   },
   {
     icon: Clock,
@@ -74,7 +74,7 @@ const values = [
 const steps = [
   {
     title: "Technical Discovery",
-    body: "Deep audit of goals, constraints, integrations and compliance requirements.",
+    body: "Deep audit of goals, constraints, workflows and compliance requirements.",
   },
   {
     title: "UI/UX & Prototyping",
@@ -93,8 +93,8 @@ const steps = [
     body: "Lighthouse, security scan, load tests and accessibility review before launch.",
   },
   {
-    title: "Cloud Deploy & SLA",
-    body: "Zero-downtime deploy to your cloud with monitoring, alerting and 99.9% SLA.",
+    title: "Launch & Handoff",
+    body: "Production-ready release, documentation and ownership handoff for your team.",
   },
 ];
 
@@ -119,8 +119,8 @@ const leadership = [
   },
   {
     name: "Sana Qureshi",
-    role: "AI & Product",
-    bio: "Gemini and LangChain integrations, RAG pipelines and product delivery.",
+    role: "Product Lead",
+    bio: "Product planning, delivery rituals and client-facing roadmap management.",
     initials: "SQ",
   },
 ];
@@ -128,12 +128,13 @@ const leadership = [
 export default undefined;
 
 function About() {
-  const teamData = useCollection<any>("team");
+  type TeamMember = (typeof fallbackTeam)[number];
+  const teamData = useCollection<TeamMember>("team");
   const teamList = (
     teamData && teamData.length > 0 ? teamData : fallbackTeam
   ) as typeof fallbackTeam;
   const displayTeam = leadership.map((l) => {
-    const match = teamList.find((t: any) => t.name === l.name);
+    const match = teamList.find((t) => t.name === l.name);
     return match ? { ...l, role: match.role ?? l.role } : l;
   });
 
@@ -152,9 +153,9 @@ function About() {
             </span>
           </h1>
           <p className="mt-5 text-lg text-muted-foreground leading-relaxed">
-            Netweavesolutions exists to build world-class digital products for startups, enterprises, schools
-            and hospitals — combining modern server-side rendering, native AI integrations and full
-            source code transparency.
+            Netweavesolutions exists to build world-class digital products for startups,
+            enterprises, schools and hospitals — combining modern server-side rendering,
+            maintainable engineering and full source code transparency.
           </p>
         </div>
 
@@ -169,17 +170,18 @@ function About() {
             </h3>
             <div className="mt-4 space-y-4 text-white/70 leading-relaxed">
               <p>
-                Netweavesolutions was started by a group of cloud architects and senior developers who were
-                done watching great product ideas die in slow, opaque agency delivery cycles.
+                Netweavesolutions was started by a group of cloud architects and senior developers
+                who were done watching great product ideas die in slow, opaque agency delivery
+                cycles.
               </p>
               <p>
                 We built the studio we always wished existed — modern server-side rendering by
-                default, instant AI integrations, sub-second page loads, and 100% source code
+                default, clean architecture, sub-second page loads, and 100% source code
                 transparency on every project.
               </p>
               <p>
-                Five years later, we've shipped 120+ products for founders, scale-ups and
-                enterprises across 12 countries. The team is still small on purpose.
+                Every public number on this site now comes from live CMS data, not inflated agency
+                counters. The team is still small on purpose.
               </p>
             </div>
           </div>
@@ -350,4 +352,3 @@ function About() {
     </>
   );
 }
-

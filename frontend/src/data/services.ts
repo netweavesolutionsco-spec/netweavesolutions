@@ -68,29 +68,4 @@ export const services: Service[] = [
     icon: "Palette",
     items: ["Dashboard Design", "Logo Design", "Brand Identity"],
   },
-  {
-    slug: "seo-digital-marketing",
-    category: "Growth",
-    title: "SEO & Digital Marketing",
-    description:
-      "Data-driven SEO, content and paid strategy that compounds — turning search and social into predictable pipeline.",
-    icon: "TrendingUp",
-    items: ["Technical SEO", "Content Strategy", "Google Ads", "Social Media", "Analytics Setup"],
-  },
-  {
-    slug: "devops-integrations",
-    category: "Platform",
-    title: "DevOps & Integrations",
-    description:
-      "Ship faster and scale calmly with modern hosting, CI/CD and integrations across your product surface.",
-    icon: "Cloud",
-    items: [
-      "Website Maintenance",
-      "Hosting Setup",
-      "Cloud Deployment",
-      "API Integration",
-      "Payment Gateway Integration",
-      "AI Chatbot Integration",
-    ],
-  },
 ];

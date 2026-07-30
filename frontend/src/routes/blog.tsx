@@ -11,7 +11,7 @@ import { posts as fallback, type Post } from "@/data/blog";
 
 const CATS = [
   "All",
-  "AI & Cloud",
+  "Software Engineering",
   "Web Development",
   "Mobile Development",
   "UI/UX Design",
@@ -23,7 +23,7 @@ function matchCat(p: Post, c: Cat) {
   const cat = p.category.toLowerCase();
   const map: Record<Cat, string[]> = {
     All: [],
-    "AI & Cloud": ["ai", "cloud", "growth"],
+    "Software Engineering": ["engineering", "software"],
     "Web Development": ["web", "engineering", "development"],
     "Mobile Development": ["mobile"],
     "UI/UX Design": ["design", "ui", "ux"],
@@ -38,10 +38,13 @@ export const Route = createFileRoute("/blog")({
       {
         name: "description",
         content:
-          "Deep dives into Next.js 15, microservices, Gemini AI integrations and high-conversion UI/UX patterns.",
+          "Deep dives into product engineering, custom software, web apps, mobile apps and UI/UX patterns.",
       },
       { property: "og:title", content: `Engineering Blog — ${brand.name}` },
-      { property: "og:description", content: "Tech insights from the Netweavesolutions engineering team." },
+      {
+        property: "og:description",
+        content: "Tech insights from the Netweavesolutions engineering team.",
+      },
       { property: "og:type", content: "website" },
       { property: "og:url", content: "/blog" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -84,8 +87,8 @@ function Blog() {
           </span>
         </h1>
         <p className="mt-5 text-lg text-muted-foreground">
-          Deep dives into Next.js 15, microservices, Gemini AI integrations, and high-conversion
-          UI/UX design patterns.
+          Deep dives into product engineering, custom software, web apps, mobile apps and UI/UX
+          design patterns.
         </p>
       </div>
 
@@ -236,4 +239,3 @@ function Blog() {
     </Section>
   );
 }
-

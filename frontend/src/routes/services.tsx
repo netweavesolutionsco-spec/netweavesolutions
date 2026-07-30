@@ -9,6 +9,7 @@ import { ContactCta } from "@/components/home/contact-cta";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
 import { brand } from "@/data/brand";
+import type { Service } from "@/data/services";
 
 export const Route = createFileRoute("/services")({
   head: () => ({
@@ -16,8 +17,7 @@ export const Route = createFileRoute("/services")({
       { title: `Services — ${brand.name}` },
       {
         name: "description",
-        content:
-          "Web, mobile, custom software, design and growth services from Netweavesolutions.",
+        content: "Web, mobile, custom software and UI/UX design services from Netweavesolutions.",
       },
       { property: "og:title", content: `Services — ${brand.name}` },
       {
@@ -51,7 +51,7 @@ const COMPARE = [
 ];
 
 function Services() {
-  const services = useCollection<any>("services");
+  const services = useCollection<Service>("services");
   const [stackTab, setStackTab] = useState<string>("Frontend");
   return (
     <>
@@ -59,7 +59,7 @@ function Services() {
         eyebrow="Services"
         title={
           <>
-            Everything you need to <span className="text-gradient">ship, scale and grow.</span>
+            Everything you need to <span className="text-gradient">ship reliable software.</span>
           </>
         }
         subtitle="Pick one, pick a few, or run your whole product engineering with us."
@@ -94,7 +94,7 @@ function Services() {
                     <p className="mt-3 text-muted-foreground">{s.description}</p>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 content-start">
-                    {s.items.map((it: any) => (
+                    {s.items.map((it) => (
                       <div
                         key={it}
                         className="flex items-center gap-2 rounded-xl border border-border/60 bg-background/50 px-3 py-2.5 text-sm"
@@ -208,4 +208,3 @@ function Services() {
     </>
   );
 }
-

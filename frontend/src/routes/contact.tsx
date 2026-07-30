@@ -4,7 +4,16 @@ import { z } from "zod";
 import { toast } from "sonner";
 import confetti from "canvas-confetti";
 import { motion } from "motion/react";
-import { Mail, Phone, MapPin, MessageCircle, Send, CheckCircle2, Loader2, Lock } from "lucide-react";
+import {
+  Mail,
+  Phone,
+  MapPin,
+  MessageCircle,
+  Send,
+  CheckCircle2,
+  Loader2,
+  Lock,
+} from "lucide-react";
 import { Section } from "@/components/section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,7 +29,6 @@ const services = [
   "Mobile App",
   "Custom Software",
   "UI/UX Design",
-  "AI Chatbot",
 ];
 const budgets = ["₹15,000 - ₹35,000", "₹35,000 - ₹75,000", "₹75,000 - ₹1,50,000", "₹1,50,000+"];
 const timelines = [
@@ -131,7 +139,7 @@ function Contact() {
 
   return (
     <Section className="pt-20 md:pt-28">
-        <div className="text-center max-w-3xl mx-auto">
+      <div className="text-center max-w-3xl mx-auto">
         <span className="inline-flex items-center rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs font-medium text-white/80 backdrop-blur">
           Get In Touch
         </span>
@@ -288,8 +296,8 @@ function Contact() {
               <h3 className="mt-6 text-2xl font-bold text-white">Sign in to send your brief</h3>
               <p className="mx-auto mt-3 max-w-md text-white/70">
                 Project briefs are tied to your client account so you can track our reply, share
-                files and receive quotations in your portal. It only takes a minute — we'll bring you
-                straight back here.
+                files and receive quotations in your portal. It only takes a minute — we'll bring
+                you straight back here.
               </p>
               <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                 <Button
@@ -301,7 +309,12 @@ function Contact() {
                     Login to Continue
                   </Link>
                 </Button>
-                <Button asChild size="lg" variant="outline" className="w-full rounded-full sm:w-auto">
+                <Button
+                  asChild
+                  size="lg"
+                  variant="outline"
+                  className="w-full rounded-full sm:w-auto"
+                >
                   <Link to="/client/register" search={authRedirect}>
                     Create an Account
                   </Link>
@@ -323,9 +336,8 @@ function Contact() {
               <div>
                 <h3 className="text-xl font-semibold text-white">Send Us a Direct Brief</h3>
                 <p className="text-sm text-white/60">
-                  Signed in as{" "}
-                  <span className="font-medium text-cyan-300">{user.email}</span> · we reply within
-                  one working day.
+                  Signed in as <span className="font-medium text-cyan-300">{user.email}</span> · we
+                  reply within one working day.
                 </p>
               </div>
 
@@ -438,7 +450,7 @@ function Contact() {
                   id="message"
                   name="message"
                   rows={5}
-                  placeholder="Tell us about goals, timelines, and integrations…"
+                  placeholder="Tell us about goals, timelines, and required features…"
                   className="mt-1.5 bg-white/5 border-white/10"
                 />
                 {errors.message && <p className="mt-1 text-xs text-red-400">{errors.message}</p>}
@@ -467,4 +479,3 @@ function Contact() {
     </Section>
   );
 }
-

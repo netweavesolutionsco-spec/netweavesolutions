@@ -7,7 +7,6 @@ export const SERVICES = [
   "Mobile App",
   "Custom Software",
   "UI/UX Design",
-  "AI Chatbot",
   "Other",
 ] as const;
 

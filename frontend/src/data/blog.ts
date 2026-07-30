@@ -35,18 +35,6 @@ export const posts: Post[] = [
       "Speed and safety aren't a trade-off — they're a function of the same underlying practices. Trunk-based development, feature flags, small PRs, observability from day one. Here's how we set it up on new projects.",
   },
   {
-    slug: "seo-fundamentals-2026",
-    title: "SEO fundamentals that still work in 2026",
-    excerpt:
-      "AI answers changed the game, but the underlying playbook is more relevant than ever. Content depth, entity clarity, technical hygiene.",
-    category: "Growth",
-    date: "2026-05-02",
-    readTime: "10 min",
-    author: "Sara Ali",
-    content:
-      "Search has changed shape, but the fundamentals haven't. Ship pages that answer a specific question completely, structure them so machines can understand them, and keep your technical house in order.",
-  },
-  {
     slug: "picking-the-right-stack",
     title: "How we pick the right stack for a new project",
     excerpt:
@@ -60,4 +48,4 @@ export const posts: Post[] = [
   },
 ];
 
-export const categories = ["All", "Design", "Engineering", "Growth"];
+export const categories = ["All", "Design", "Engineering"];

@@ -4,7 +4,7 @@ export const team = [
   { name: "Rohan Verma", role: "Engineering Lead", initials: "RV" },
   { name: "Sana Qureshi", role: "Product Manager", initials: "SQ" },
   { name: "Liam Park", role: "Mobile Engineer", initials: "LP" },
-  { name: "Nisha Rao", role: "Growth Lead", initials: "NR" },
+  { name: "Nisha Rao", role: "Client Success Lead", initials: "NR" },
 ];
 
 export const values = [
@@ -41,7 +41,7 @@ export const processSteps = [
   },
   {
     title: "Launch",
-    body: "Performance, SEO, accessibility and analytics baked in from the start — not bolted on.",
+    body: "Performance, accessibility and product quality baked in from the start — not bolted on.",
   },
   {
     title: "Grow",

@@ -2,6 +2,7 @@ import { motion } from "motion/react";
 import { Shield, Zap, Users, Award } from "lucide-react";
 import { Section } from "@/components/section";
 import { Counter } from "@/components/counter";
+import { useLiveSiteStats } from "@/hooks/use-live-site-stats";
 
 const reasons = [
   {
@@ -26,14 +27,15 @@ const reasons = [
   },
 ];
 
-const stats = [
-  { value: 120, suffix: "+", label: "Products shipped" },
-  { value: 40, suffix: "M+", label: "Requests served / mo" },
-  { value: 98, suffix: "%", label: "Client retention" },
-  { value: 12, suffix: "", label: "Countries served" },
-];
-
 export function WhyChooseUs() {
+  const { counts, loading } = useLiveSiteStats();
+  const stats = [
+    { value: counts.portfolio, label: "Published projects" },
+    { value: counts.services, label: "Active services" },
+    { value: counts.blog, label: "Published articles" },
+    { value: counts.testimonials, label: "Client testimonials" },
+  ];
+
   return (
     <Section
       eyebrow="Why teams pick us"
@@ -65,7 +67,7 @@ export function WhyChooseUs() {
         {stats.map((s) => (
           <div key={s.label} className="text-center">
             <div className="text-4xl md:text-5xl font-display font-bold text-gradient">
-              <Counter to={s.value} suffix={s.suffix} />
+              {loading ? "—" : <Counter to={s.value} />}
             </div>
             <div className="mt-2 text-xs md:text-sm text-muted-foreground">{s.label}</div>
           </div>

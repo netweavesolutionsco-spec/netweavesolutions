@@ -71,7 +71,7 @@ export const projects: Project[] = [
     description:
       "A cross-border payments SaaS handling FX, compliance, and reconciliation across 40+ currencies with real-time settlement analytics.",
     tech: ["Next.js", "React", "TypeScript", "Node.js", "Kafka", "ClickHouse"],
-    metric: "$40M+ processed",
+    metric: "Multi-currency dashboard",
     gradient: "from-cyan-500 via-sky-500 to-indigo-600",
     image: aetherpayImg,
     liveUrl: "https://demo.aetherpay.io",
@@ -82,11 +82,15 @@ export const projects: Project[] = [
       "Legacy cross-border rails were slow, opaque, and had no unified settlement view for finance teams.",
     solution:
       "Event-driven ledger with real-time FX quotes, automated compliance checks and a treasury dashboard.",
-    outcomes: ["Sub-second FX quotes", "$40M+ processed in first year", "-70% reconciliation time"],
+    outcomes: [
+      "Real-time FX quote workspace",
+      "Unified settlement dashboard",
+      "Automated reconciliation queue",
+    ],
     stats: [
-      { label: "Volume", value: "$40M+" },
-      { label: "Currencies", value: "40+" },
-      { label: "Uptime", value: "99.99%" },
+      { label: "Dashboard", value: "Live" },
+      { label: "Currencies", value: "Multi" },
+      { label: "Workflow", value: "Automated" },
     ],
   },
   {
@@ -170,4 +174,3 @@ export const projects: Project[] = [
     ],
   },
 ];
-

@@ -20,20 +20,6 @@ export const jobs = [
     location: "Remote / India",
     team: "Engineering",
   },
-  {
-    slug: "devops-engineer",
-    title: "DevOps Engineer",
-    type: "Contract",
-    location: "Remote",
-    team: "Platform",
-  },
-  {
-    slug: "growth-marketer",
-    title: "Growth Marketer",
-    type: "Full-time",
-    location: "Remote / India",
-    team: "Growth",
-  },
 ];
 
 export const benefits = [
