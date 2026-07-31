@@ -19,6 +19,7 @@ import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useIsAdmin } from "@/hooks/useAuthUser";
 import { Navigate, useSearch } from "@tanstack/react-router";
+import { createAdminNotification, createClientNotification } from "@/admin/lib/notifications";
 
 type ProjectStatus =
   | "submitted"
@@ -203,18 +204,44 @@ export function ProjectsPage() {
     submitting.current = true;
     setSaving(true);
     try {
-      const { error } = await supabase.from("client_projects").insert({
-        client_id: form.clientId,
-        name: form.name.trim(),
-        category: form.category.trim(),
-        description: form.description.trim(),
-        status: form.status,
-        priority: form.priority,
-        deadline: form.deadline || null,
-        expected_budget: form.expectedBudget ? Number(form.expectedBudget) : null,
-        requirements: form.requirements.trim() || null,
-      });
+      const { data: created, error } = await supabase
+        .from("client_projects")
+        .insert({
+          client_id: form.clientId,
+          name: form.name.trim(),
+          category: form.category.trim(),
+          description: form.description.trim(),
+          status: form.status,
+          priority: form.priority,
+          deadline: form.deadline || null,
+          expected_budget: form.expectedBudget ? Number(form.expectedBudget) : null,
+          requirements: form.requirements.trim() || null,
+        })
+        .select("id")
+        .single();
       if (error) throw error;
+
+      const projectName = form.name.trim();
+      const clientName =
+        clients.find((c) => c.id === form.clientId)?.label ?? "a client";
+      // Notify the admin feed and the client whose project this is. Both are
+      // best-effort — a notification failure must never block project creation.
+      await Promise.all([
+        createAdminNotification({
+          title: "New project created",
+          description: `${projectName} was created for ${clientName}.`,
+          userName: clientName,
+          relatedModule: "projects",
+          type: "success",
+          actionUrl: "/admin/projects",
+        }),
+        createClientNotification(form.clientId, {
+          type: "info",
+          title: "New project added",
+          body: `A new project "${projectName}" has been added to your account.`,
+          actionUrl: "/client/projects",
+        }),
+      ]);
 
       toast.success("Project created");
       setOpen(false);

@@ -100,5 +100,16 @@ export const publishSettings = createServerFn({ method: "POST" })
     if (!rows || rows.length === 0) {
       throw new Error("Publish failed: no row was written. Check admin permissions.");
     }
+    try {
+      await sb.from("admin_notifications").insert({
+        title: "Website changes published",
+        description: "Site settings and content were published live.",
+        related_module: "cms",
+        type: "success",
+        action_url: "/admin/cms",
+      });
+    } catch (err) {
+      console.error("[notifications] publishSettings notify failed:", err);
+    }
     return { ok: true };
   });

@@ -63,6 +63,35 @@ function serverPublicClient() {
   });
 }
 
+// Human labels + admin-notification metadata per collection, so publishing a
+// collection records the right event ("Blog published", "Pricing updated", …).
+const COLLECTION_META: Record<string, { label: string; module: string; verb: string }> = {
+  blog: { label: "Blog", module: "blog", verb: "published" },
+  portfolio: { label: "Portfolio", module: "portfolio", verb: "updated" },
+  pricing: { label: "Pricing", module: "pricing", verb: "updated" },
+  services: { label: "Services", module: "cms", verb: "updated" },
+  testimonials: { label: "Testimonials", module: "cms", verb: "updated" },
+  team: { label: "Team page", module: "cms", verb: "updated" },
+  faqs: { label: "FAQs", module: "cms", verb: "updated" },
+  jobs: { label: "Careers", module: "cms", verb: "updated" },
+};
+
+/** Best-effort admin notification via the caller's authenticated client. Never throws. */
+async function notifyPublish(sb: Loose, key: string, count: number) {
+  const meta = COLLECTION_META[key] ?? { label: key, module: "cms", verb: "updated" };
+  try {
+    await sb.from("admin_notifications").insert({
+      title: `${meta.label} ${meta.verb}`,
+      description: `${meta.label} was ${meta.verb} with ${count} item${count === 1 ? "" : "s"} live on the site.`,
+      related_module: meta.module,
+      type: "success",
+      action_url: "/admin/cms",
+    });
+  } catch (err) {
+    console.error("[notifications] publishCollection notify failed:", err);
+  }
+}
+
 function pickArray(v: unknown, fallback: any[]): any[] {
   if (Array.isArray(v)) return v;
   if (v && typeof v === "object" && Array.isArray((v as { items?: unknown[] }).items)) {
@@ -159,5 +188,6 @@ export const publishCollection = createServerFn({ method: "POST" })
         .insert({ id, data: payload, published_data: payload, updated_by: context.userId });
       if (error) throw new Error(error.message);
     }
+    await notifyPublish(sb, data.key, data.items.length);
     return { ok: true };
   });

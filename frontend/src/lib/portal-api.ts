@@ -487,11 +487,59 @@ export function useCreateRequirement() {
 
 export function useMarkNotificationsRead() {
   const queryClient = useQueryClient();
-  return useMutation({
+  return useMutation<{ notification: ClientNotification } | { ok: boolean }, Error, string | undefined>({
     mutationFn: (id?: string) =>
       id
         ? api.patch<{ notification: ClientNotification }>(`/portal/notifications/${id}/read`, {})
         : api.patch<{ ok: boolean }>("/portal/notifications/read-all", {}),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: portalKeys.dashboard });
+      void queryClient.invalidateQueries({ queryKey: ["portal", "notifications"] });
+    },
+  });
+}
+
+/**
+ * Notification feed for the client portal. Clients hold no browser Supabase
+ * session, so realtime isn't available to them — we poll the backend on an
+ * interval instead. `refetchInterval` keeps the bell count and list fresh; the
+ * poll also runs in the background so the unread badge updates while the client
+ * is on another page.
+ */
+export function useClientNotifications(filters?: Record<string, unknown>) {
+  const ready = usePortalSessionReady();
+  return useQuery({
+    queryKey: portalKeys.collection("notifications", filters),
+    queryFn: () => api.get<Paginated<ClientNotification>>(`/portal/notifications${qs(filters)}`),
+    enabled: ready,
+    retry: retryPortal,
+    refetchInterval: 30_000,
+    refetchIntervalInBackground: true,
+  });
+}
+
+/** Unread notification count, polled — drives the sidebar bell badge. */
+export function useUnreadNotificationCount() {
+  const query = useClientNotifications({ pageSize: 100 });
+  const unread = query.data?.data.filter((n) => !n.readAt).length ?? 0;
+  return { unread, isLoading: query.isLoading };
+}
+
+export function useDeleteNotification() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api.del<{ ok: boolean }>(`/portal/notifications/${id}`),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: portalKeys.dashboard });
+      void queryClient.invalidateQueries({ queryKey: ["portal", "notifications"] });
+    },
+  });
+}
+
+export function useClearAllNotifications() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.del<{ ok: boolean }>("/portal/notifications/clear-all"),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: portalKeys.dashboard });
       void queryClient.invalidateQueries({ queryKey: ["portal", "notifications"] });

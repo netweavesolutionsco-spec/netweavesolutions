@@ -55,14 +55,44 @@ export async function recordActivity(clientId, actorId, action, description, met
   });
 }
 
-async function insertNotification(clientId, type, title, body, actionUrl = null) {
-  await supabaseAdmin.from("client_notifications").insert({
-    client_id: clientId,
-    type,
-    title,
-    body,
-    action_url: actionUrl,
+/**
+ * Insert with one retry on transient failure. Returns true on success, false
+ * otherwise. Never throws — a notification failure must not break the action
+ * that triggered it — but it always logs so failures are never silent.
+ */
+async function insertWithRetry(table, row, label) {
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    try {
+      const { error } = await supabaseAdmin.from(table).insert(row);
+      if (!error) return true;
+      console.error(
+        `[notifications] ${label} insert failed (attempt ${attempt}/2): ${error.message}`,
+      );
+    } catch (err) {
+      console.error(
+        `[notifications] ${label} insert threw (attempt ${attempt}/2): ${err?.message ?? err}`,
+      );
+    }
+  }
+  console.error(`[notifications] ${label} insert gave up after 2 attempts`, {
+    table,
+    row,
   });
+  return false;
+}
+
+export async function insertNotification(clientId, type, title, body, actionUrl = null) {
+  return insertWithRetry(
+    "client_notifications",
+    {
+      client_id: clientId,
+      type,
+      title,
+      body,
+      action_url: actionUrl,
+    },
+    `client(${type})`,
+  );
 }
 
 /**
@@ -78,19 +108,18 @@ export async function insertAdminNotification({
   type = "info",
   actionUrl = null,
 }) {
-  try {
-    const { error } = await supabaseAdmin.from("admin_notifications").insert({
+  return insertWithRetry(
+    "admin_notifications",
+    {
       title,
       description,
       user_name: userName,
       related_module: relatedModule,
       type,
       action_url: actionUrl,
-    });
-    if (error) console.error("admin_notifications insert failed:", error.message);
-  } catch (err) {
-    console.error("admin_notifications insert threw:", err?.message ?? err);
-  }
+    },
+    `admin(${relatedModule ?? type})`,
+  );
 }
 
 function projectPayload(input, clientId) {
@@ -811,6 +840,25 @@ export async function markAllNotificationsRead(clientId) {
     .update({ read_at: new Date().toISOString() })
     .eq("client_id", clientId)
     .is("read_at", null);
+  if (error) throw error;
+  return { ok: true };
+}
+
+export async function deleteNotification(clientId, notificationId) {
+  const { error } = await supabaseAdmin
+    .from("client_notifications")
+    .delete()
+    .eq("id", notificationId)
+    .eq("client_id", clientId);
+  if (error) throw error;
+  return { ok: true };
+}
+
+export async function clearAllNotifications(clientId) {
+  const { error } = await supabaseAdmin
+    .from("client_notifications")
+    .delete()
+    .eq("client_id", clientId);
   if (error) throw error;
   return { ok: true };
 }

@@ -212,5 +212,7 @@ router.post("/meetings", validate(meetingSchema), asyncHandler(controller.create
 router.patch("/meetings/:meetingId", validate(meetingUpdateSchema), asyncHandler(controller.updateMeeting));
 router.patch("/notifications/read-all", asyncHandler(controller.markAllNotificationsRead));
 router.patch("/notifications/:notificationId/read", asyncHandler(controller.markNotificationRead));
+router.delete("/notifications/clear-all", asyncHandler(controller.clearAllNotifications));
+router.delete("/notifications/:notificationId", asyncHandler(controller.deleteNotification));
 
 export default router;

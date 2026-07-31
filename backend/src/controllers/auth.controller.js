@@ -14,7 +14,7 @@ import {
   getAppMetadata,
   setAppMetadata,
 } from "../services/clientService.js";
-import { recordActivity, insertAdminNotification } from "../services/portal.service.js";
+import { recordActivity, insertAdminNotification, insertNotification } from "../services/portal.service.js";
 import { sendMail, emailTemplates, isMailConfigured } from "../utils/mailer.js";
 import { sendOtpWhatsApp } from "../utils/whatsapp.js";
 
@@ -475,6 +475,22 @@ export async function verifyEmail(req, res) {
     email: verifiedUser.email,
   });
 
+  await insertNotification(
+    verifiedUser.id,
+    "success",
+    "Email verified",
+    "Your email address has been verified. You now have full access to your client portal.",
+    "/client/dashboard",
+  );
+  await insertAdminNotification({
+    title: "Client verified email",
+    description: `${verifiedUser.email ?? "A client"} verified their email address.`,
+    userName: verifiedUser.email ?? null,
+    relatedModule: "clients",
+    type: "success",
+    actionUrl: "/admin/clients",
+  });
+
   return res.json({
     ok: true,
     email: verifiedUser.email ?? null,
@@ -503,6 +519,13 @@ export async function resetPassword(req, res) {
   }
 
   await updateClient(data.user.id, { password });
+  await insertNotification(
+    data.user.id,
+    "warning",
+    "Password changed",
+    "Your account password was reset. If this wasn't you, contact support immediately.",
+    "/client/settings",
+  );
   return res.json({ ok: true });
 }
 
@@ -517,6 +540,13 @@ export async function changePassword(req, res) {
   if (error) return res.status(400).json({ error: "Current password is incorrect" });
 
   const client = await updateClient(req.client.id, { password: newPassword });
+  await insertNotification(
+    req.client.id,
+    "warning",
+    "Password changed",
+    "Your account password was changed successfully. If this wasn't you, contact support immediately.",
+    "/client/settings",
+  );
   return res.json({ ok: true, client: toSafeClient(client) });
 }
 

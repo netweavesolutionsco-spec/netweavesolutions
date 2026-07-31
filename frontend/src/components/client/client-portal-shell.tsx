@@ -20,6 +20,7 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import { useClientAuth } from "@/hooks/use-client-auth";
+import { useUnreadNotificationCount } from "@/lib/portal-api";
 import { cn } from "@/lib/utils";
 import { LogoMark } from "@/components/logo";
 import { Button } from "@/components/ui/button";
@@ -50,6 +51,7 @@ export function ClientPortalShell({ children, title }: { children: ReactNode; ti
   const { user, loading, configured, logout } = useClientAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { unread } = useUnreadNotificationCount();
 
   useEffect(() => {
     if (loading) return;
@@ -111,6 +113,19 @@ export function ClientPortalShell({ children, title }: { children: ReactNode; ti
                   >
                     <Icon className="h-4 w-4 shrink-0" />
                     <span className="whitespace-nowrap lg:whitespace-normal">{label}</span>
+                    {to === "/client/notifications" && unread > 0 && (
+                      <span
+                        className={cn(
+                          "ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-semibold",
+                          active
+                            ? "bg-primary-foreground/20 text-primary-foreground"
+                            : "bg-primary text-primary-foreground",
+                        )}
+                        aria-label={`${unread} unread notifications`}
+                      >
+                        {unread > 99 ? "99+" : unread}
+                      </span>
+                    )}
                   </Link>
                 );
               })}

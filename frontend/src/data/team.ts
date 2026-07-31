@@ -1,10 +1,8 @@
 export const team = [
-  { name: "Arjun Kapoor", role: "Founder & CEO", initials: "AK" },
-  { name: "Meera Iyer", role: "Head of Design", initials: "MI" },
-  { name: "Rohan Verma", role: "Engineering Lead", initials: "RV" },
-  { name: "Sana Qureshi", role: "Product Manager", initials: "SQ" },
-  { name: "Liam Park", role: "Mobile Engineer", initials: "LP" },
-  { name: "Nisha Rao", role: "Client Success Lead", initials: "NR" },
+  { name: "Siddharth Kumar", initials: "SK" },
+  { name: "Anish Kumar", initials: "AK" },
+  { name: "Shivam Kumar", initials: "SK" },
+  { name: "Geetanshu", initials: "GE" },
 ];
 
 export const values = [

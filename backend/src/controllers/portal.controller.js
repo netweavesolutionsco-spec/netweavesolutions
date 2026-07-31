@@ -205,3 +205,11 @@ export async function markNotificationRead(req, res) {
 export async function markAllNotificationsRead(req, res) {
   res.json(await portal.markAllNotificationsRead(req.client.id));
 }
+
+export async function deleteNotification(req, res) {
+  res.json(await portal.deleteNotification(req.client.id, req.params.notificationId));
+}
+
+export async function clearAllNotifications(req, res) {
+  res.json(await portal.clearAllNotifications(req.client.id));
+}

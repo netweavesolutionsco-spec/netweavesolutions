@@ -98,45 +98,14 @@ const steps = [
   },
 ];
 
-const leadership = [
-  {
-    name: "Arjun Kapoor",
-    role: "Founder & CTO",
-    bio: "Ex-cloud architect (AWS). 12 years shipping distributed systems at scale.",
-    initials: "AK",
-  },
-  {
-    name: "Meera Iyer",
-    role: "Lead UI Architect",
-    bio: "Design systems, motion and accessibility. Previously at design-led product studios.",
-    initials: "MI",
-  },
-  {
-    name: "Rohan Verma",
-    role: "Engineering Lead",
-    bio: "Full-stack lead specialised in high-concurrency Node & Postgres platforms.",
-    initials: "RV",
-  },
-  {
-    name: "Sana Qureshi",
-    role: "Product Lead",
-    bio: "Product planning, delivery rituals and client-facing roadmap management.",
-    initials: "SQ",
-  },
-];
-
 export default undefined;
 
 function About() {
   type TeamMember = (typeof fallbackTeam)[number];
   const teamData = useCollection<TeamMember>("team");
-  const teamList = (
+  const displayTeam = (
     teamData && teamData.length > 0 ? teamData : fallbackTeam
   ) as typeof fallbackTeam;
-  const displayTeam = leadership.map((l) => {
-    const match = teamList.find((t) => t.name === l.name);
-    return match ? { ...l, role: match.role ?? l.role } : l;
-  });
 
   return (
     <>
@@ -302,11 +271,15 @@ function About() {
               className="rounded-2xl border border-white/10 bg-[#0b1220]/60 backdrop-blur p-6 text-center"
             >
               <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 text-white text-xl font-bold">
-                {m.initials}
+                {m.initials ??
+                  m.name
+                    .split(" ")
+                    .map((p) => p[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase()}
               </div>
               <h3 className="mt-4 text-base font-semibold text-white">{m.name}</h3>
-              <div className="text-xs text-cyan-300 font-medium">{m.role}</div>
-              <p className="mt-3 text-sm text-white/60 leading-relaxed">{m.bio}</p>
             </motion.div>
           ))}
         </div>

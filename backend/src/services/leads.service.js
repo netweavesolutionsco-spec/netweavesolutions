@@ -1,4 +1,5 @@
 import { supabaseAdmin } from "../config/supabase.js";
+import { insertAdminNotification } from "./portal.service.js";
 
 /**
  * Error thrown when the same enquiry was already submitted very recently.
@@ -69,6 +70,17 @@ export async function createLeadRecord(lead) {
     err.cause = error;
     throw err;
   }
+
+  await insertAdminNotification({
+    title: "New lead received",
+    description: `${lead.name} (${lead.email})${lead.service ? ` · ${lead.service}` : ""}${
+      lead.company ? ` · ${lead.company}` : ""
+    }`,
+    userName: lead.name,
+    relatedModule: "leads",
+    type: "lead",
+    actionUrl: "/admin/leads",
+  });
 
   return data;
 }
