@@ -2,6 +2,16 @@ import nodemailer from "nodemailer";
 import { env } from "../config/env.js";
 
 let transporter = null;
+
+/**
+ * Whether a real SMTP transport is configured. Callers that must GUARANTEE
+ * delivery (e.g. email verification) check this so they can fall back to
+ * another channel instead of trusting a silent no-op send.
+ */
+export function isMailConfigured() {
+  return Boolean(env.SMTP.host);
+}
+
 function getTransport() {
   if (transporter) return transporter;
   if (!env.SMTP.host) {
@@ -20,10 +30,14 @@ function getTransport() {
 export async function sendMail({ to, subject, html, text }) {
   const t = getTransport();
   if (!t) {
+    // No SMTP configured: log for local development and signal to the caller
+    // (via the return value) that nothing was actually delivered. Previously
+    // this returned undefined, which callers read as success.
     console.log("[mail:dev]", { to, subject, text: text || html });
-    return;
+    return { delivered: false };
   }
   await t.sendMail({ from: env.SMTP.from, to, subject, html, text });
+  return { delivered: true };
 }
 
 export const emailTemplates = {

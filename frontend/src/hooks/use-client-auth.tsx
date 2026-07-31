@@ -46,7 +46,7 @@ interface AuthState {
   login: (email: string, password: string, rememberMe?: boolean) => Promise<void>;
   register: (
     payload: RegisterPayload,
-  ) => Promise<{ message: string; requiresEmailVerification: boolean }>;
+  ) => Promise<{ message: string; requiresEmailVerification: boolean; emailSent: boolean }>;
   loginWithGoogle: () => Promise<void>;
   completeOAuth: () => Promise<void>;
   resendVerification: (email: string) => Promise<void>;
@@ -66,6 +66,33 @@ interface AuthState {
 }
 
 const Ctx = createContext<AuthState | null>(null);
+
+/**
+ * Best-effort check of whether a Supabase OAuth provider is enabled, using the
+ * project's public `/auth/v1/settings` endpoint (no auth required). Returns:
+ *   - `true`  provider is enabled
+ *   - `false` provider is explicitly disabled
+ *   - `null`  couldn't determine (network error, unexpected shape) — callers
+ *             should treat this as "don't block", letting Supabase be the
+ *             authority so we never falsely refuse a working provider.
+ */
+async function isOAuthProviderEnabled(provider: string): Promise<boolean | null> {
+  const base = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string | undefined;
+  if (!base) return null;
+  try {
+    const res = await fetch(`${base.replace(/\/$/, "")}/auth/v1/settings`, {
+      headers: key ? { apikey: key } : undefined,
+    });
+    if (!res.ok) return null;
+    const settings = (await res.json()) as { external?: Record<string, boolean> };
+    const external = settings?.external;
+    if (!external || typeof external[provider] !== "boolean") return null;
+    return external[provider];
+  } catch {
+    return null;
+  }
+}
 
 function normalizeClientUser(raw: Partial<ClientUser> | null | undefined): ClientUser | null {
   if (!raw) return null;
@@ -145,9 +172,11 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const register = useCallback(async (payload: RegisterPayload) => {
-    const data = await api.post<{ message?: string; requiresEmailVerification?: boolean }>(
-      "/auth/register",
-      {
+    const data = await api.post<{
+      message?: string;
+      requiresEmailVerification?: boolean;
+      emailSent?: boolean;
+    }>("/auth/register", {
         fullName: payload.fullName,
         email: payload.email,
         phone: payload.phone,
@@ -177,19 +206,43 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
         data.message ??
         "Account created. Check your inbox for the verification link — you can sign in once your email is verified.",
       requiresEmailVerification: data.requiresEmailVerification ?? true,
+      emailSent: data.emailSent ?? false,
     };
   }, []);
 
   // Kicks off the Google OAuth redirect via Supabase. On return the browser
   // lands on /client/oauth-callback, which calls completeOAuth() below.
+  //
+  // Before redirecting we ask Supabase whether the Google provider is actually
+  // enabled (its public /auth/v1/settings endpoint). Without this check a
+  // disabled provider sends the browser to an authorize URL that just renders
+  // raw `{"error_code":"validation_failed","msg":"...provider is not enabled"}`
+  // JSON — a dead end. Detecting it up front lets us show a friendly message and
+  // keep the user on the page.
   const loginWithGoogle = useCallback(async () => {
+    const enabled = await isOAuthProviderEnabled("google");
+    if (enabled === false) {
+      throw new Error(
+        "Google sign-in isn't enabled yet. Please sign in with your email and password, or contact support.",
+      );
+    }
+
     const redirectTo =
       typeof window !== "undefined" ? `${window.location.origin}/client/oauth-callback` : undefined;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
     });
-    if (error) throw new Error(error.message);
+    if (error) {
+      // Normalise Supabase's "provider is not enabled" into the same friendly
+      // copy as the pre-flight check above.
+      if (/provider is not enabled|not enabled/i.test(error.message)) {
+        throw new Error(
+          "Google sign-in isn't enabled yet. Please sign in with your email and password, or contact support.",
+        );
+      }
+      throw new Error(error.message);
+    }
   }, []);
 
   // Runs on /client/oauth-callback after Supabase completes the OAuth redirect.
@@ -197,9 +250,34 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
   // client record (reusing the same profiles/user_roles model) and returns our
   // own access token. No second auth system — same portal session as password.
   const completeOAuth = useCallback(async () => {
+    // Supabase reports OAuth failures (denied consent, disabled provider,
+    // expired code) back on the callback URL as `error` / `error_description`
+    // params — in either the query string or the hash fragment. Surface those
+    // instead of the generic "did not complete" below.
+    if (typeof window !== "undefined") {
+      const query = new URLSearchParams(window.location.search);
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const errCode = query.get("error_code") ?? hash.get("error_code") ?? "";
+      const errDesc =
+        query.get("error_description") ??
+        hash.get("error_description") ??
+        query.get("error") ??
+        hash.get("error") ??
+        "";
+      if (errCode || errDesc) {
+        const readable = errDesc.replace(/\+/g, " ");
+        if (/provider is not enabled|not enabled/i.test(readable)) {
+          throw new Error(
+            "Google sign-in isn't enabled yet. Please sign in with your email and password, or contact support.",
+          );
+        }
+        throw new Error(readable || "Google sign-in was cancelled or failed.");
+      }
+    }
+
     const { data, error } = await supabase.auth.getSession();
     if (error || !data.session) {
-      throw new Error(error?.message ?? "Google sign-in did not complete.");
+      throw new Error(error?.message ?? "Google sign-in did not complete. Please try again.");
     }
     const synced = await api.post<{ accessToken?: string; client?: Partial<ClientUser> }>(
       "/auth/oauth/sync",

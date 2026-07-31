@@ -45,13 +45,31 @@ function LoginPage() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return; // prevent duplicate sign-in requests
     setSubmitting(true);
+    setNeedsVerification(false);
     try {
       await login(email, password, remember);
       toast.success("Welcome back!");
       navigate({ to: redirect || "/client", replace: true });
-    } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Login failed");
+    } catch (err) {
+      // The backend returns 403 + requiresEmailVerification for a correct
+      // password on an unverified account. Surface the resend prompt clearly
+      // instead of a generic error.
+      const requiresVerification =
+        err instanceof ApiError &&
+        err.status === 403 &&
+        Boolean(
+          err.data &&
+            typeof err.data === "object" &&
+            (err.data as { requiresEmailVerification?: boolean }).requiresEmailVerification,
+        );
+      if (requiresVerification) {
+        setNeedsVerification(true);
+        toast.error("Please verify your email before signing in. We can resend the link below.");
+      } else {
+        toast.error(err instanceof Error ? err.message : "Login failed");
+      }
     } finally {
       setSubmitting(false);
     }
@@ -129,6 +147,12 @@ function LoginPage() {
           <Button type="submit" className="w-full" disabled={submitting || !configured}>
             {submitting ? "Signing in…" : "Sign in"}
           </Button>
+          {needsVerification && (
+            <p className="rounded-md bg-amber-500/10 p-3 text-xs text-amber-600 dark:text-amber-400">
+              Your email address isn&apos;t verified yet. Check your inbox for the verification link,
+              or resend it below.
+            </p>
+          )}
           <div className="text-center text-xs text-muted-foreground">
             Didn&apos;t get the verification email?{" "}
             <button

@@ -15,7 +15,7 @@ import {
   setAppMetadata,
 } from "../services/clientService.js";
 import { recordActivity, insertAdminNotification } from "../services/portal.service.js";
-import { sendMail, emailTemplates } from "../utils/mailer.js";
+import { sendMail, emailTemplates, isMailConfigured } from "../utils/mailer.js";
 import { sendOtpWhatsApp } from "../utils/whatsapp.js";
 
 // --- Schemas ---
@@ -134,53 +134,84 @@ async function signInClientWithPassword(email, password) {
 }
 
 /**
- * Sends the "confirm your email address" message through the project's own SMTP
- * transport (`sendMail` + `emailTemplates.verifyEmail`) so the branding matches
- * the rest of our mail and we aren't bound by Supabase's built-in mailer limits.
+ * Sends the "confirm your email address" message.
  *
- * If the admin link can't be generated we fall back to Supabase's own
- * confirmation email, so a signup never dead-ends without a way to verify.
- * Returns whether a message went out.
+ * Two delivery paths, in priority order, so a signup NEVER dead-ends without a
+ * way to verify:
+ *
+ *  1. Branded SMTP (`sendMail` + `emailTemplates.verifyEmail`) — used only when
+ *     SMTP is actually configured (`isMailConfigured()`). The link carries our
+ *     own `token_hash` from `admin.generateLink`.
+ *  2. Supabase's built-in confirmation mailer (`auth.resend`) — used when SMTP
+ *     is not configured, or when the branded path throws for any reason.
+ *
+ * Returns `true` only when a message was genuinely handed to a transport.
+ * Delivery failures are logged loudly (never swallowed) so a broken mail setup
+ * surfaces in the API logs instead of silently reporting success.
  */
 async function sendVerificationEmail({ email, fullName }) {
-  const redirectTo = `${env.FRONTEND_PRIMARY}/client/verify-email`;
+  const redirectTo = `${env.SITE_URL}/client/verify-email`;
 
+  // Preferred path: branded email over our own SMTP. Skipped entirely when no
+  // SMTP host is configured, because `sendMail` would otherwise just log the
+  // message and report nothing was delivered — we'd rather Supabase send a real
+  // email in that case.
+  if (isMailConfigured()) {
+    try {
+      // `magiclink` (not `signup`) because the auth user already exists at this
+      // point — `generateLink({type:"signup"})` would fail with "already
+      // registered". Confirming a magic-link OTP stamps `email_confirmed_at`
+      // just the same, which is what `emailVerified` derives from.
+      const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+        type: "magiclink",
+        email,
+        options: { redirectTo },
+      });
+      if (error) throw error;
+
+      const tokenHash = data?.properties?.hashed_token;
+      const link = tokenHash
+        ? `${redirectTo}?token_hash=${encodeURIComponent(tokenHash)}`
+        : data?.properties?.action_link;
+      if (!link) throw new Error("Supabase returned no verification link");
+
+      const result = await sendMail({ to: email, ...emailTemplates.verifyEmail(fullName, link) });
+      if (result?.delivered === false) {
+        throw new Error("SMTP transport reported the message was not delivered");
+      }
+      console.info(`[auth] verification email sent via SMTP to ${email}`);
+      return true;
+    } catch (error) {
+      console.error(
+        "[auth] branded verification mail failed, falling back to Supabase:",
+        error?.message ?? error,
+      );
+      // fall through to the Supabase mailer below
+    }
+  } else {
+    console.warn(
+      "[auth] SMTP not configured — sending verification via Supabase's built-in mailer",
+    );
+  }
+
+  // Fallback path: let Supabase Auth send its own confirmation email. Requires
+  // an SMTP provider (or the shared Supabase sandbox) configured in the Supabase
+  // dashboard, and `${SITE_URL}/client/verify-email` in the redirect allow-list.
   try {
-    // `magiclink` (not `signup`) because the auth user already exists at this
-    // point — `generateLink({type:"signup"})` would fail with "already
-    // registered". Confirming a magic-link OTP stamps `email_confirmed_at`
-    // just the same, which is what `emailVerified` derives from.
-    const { data, error } = await supabaseAdmin.auth.admin.generateLink({
-      type: "magiclink",
+    const { error } = await supabaseAdmin.auth.resend({
+      type: "signup",
       email,
-      options: { redirectTo },
+      options: { emailRedirectTo: redirectTo },
     });
     if (error) throw error;
-
-    const tokenHash = data?.properties?.hashed_token;
-    const link = tokenHash
-      ? `${redirectTo}?token_hash=${encodeURIComponent(tokenHash)}`
-      : data?.properties?.action_link;
-    if (!link) throw new Error("Supabase returned no verification link");
-
-    await sendMail({ to: email, ...emailTemplates.verifyEmail(fullName, link) });
+    console.info(`[auth] verification email sent via Supabase to ${email}`);
     return true;
-  } catch (error) {
-    console.warn("[auth] falling back to Supabase verification mail:", error?.message ?? error);
-    try {
-      await supabaseAdmin.auth.resend({
-        type: "signup",
-        email,
-        options: { emailRedirectTo: redirectTo },
-      });
-      return true;
-    } catch (fallbackError) {
-      console.error(
-        "[auth] verification email could not be sent:",
-        fallbackError?.message ?? fallbackError,
-      );
-      return false;
-    }
+  } catch (fallbackError) {
+    console.error(
+      "[auth] verification email could not be sent by any transport:",
+      fallbackError?.message ?? fallbackError,
+    );
+    return false;
   }
 }
 
@@ -393,14 +424,19 @@ export async function verifyEmail(req, res) {
 
   const attempts = [];
   if (tokenHash) {
+    // Our branded mail is generated with `generateLink({type:"magiclink"})`, so
+    // `magiclink` is tried first; `email`/`signup` cover Supabase's own mailer.
+    attempts.push({ token_hash: tokenHash, type: "magiclink" });
     attempts.push({ token_hash: tokenHash, type: "email" });
     attempts.push({ token_hash: tokenHash, type: "signup" });
   }
   if (token) {
+    attempts.push({ token_hash: token, type: "magiclink" });
     attempts.push({ token_hash: token, type: "email" });
     if (email) {
       attempts.push({ email, token, type: "signup" });
       attempts.push({ email, token, type: "email" });
+      attempts.push({ email, token, type: "magiclink" });
     }
   }
 
@@ -449,7 +485,7 @@ export async function verifyEmail(req, res) {
 export async function forgotPassword(req, res) {
   const { email } = req.body;
   const { error } = await supabaseAdmin.auth.resetPasswordForEmail(email, {
-    redirectTo: `${env.FRONTEND_PRIMARY}/client/reset-password`,
+    redirectTo: `${env.SITE_URL}/client/reset-password`,
   });
 
   if (error) {
@@ -489,7 +525,7 @@ export async function sendOtp(req, res) {
 
   const { error } = await supabaseAdmin.auth.signInWithOtp({
     email: req.client.email,
-    options: { emailRedirectTo: `${env.FRONTEND_PRIMARY}/auth?callback=true` },
+    options: { emailRedirectTo: `${env.SITE_URL}/auth?callback=true` },
   });
 
   if (error) {

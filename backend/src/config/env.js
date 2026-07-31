@@ -13,10 +13,20 @@ const requiredEnv = (keys) => {
   return value;
 };
 
-const origins = (process.env.FRONTEND_ORIGIN || "https://netlite.tech,https://netweavesolutions.tech")
+const origins = (process.env.FRONTEND_ORIGIN || "https://netweavesolutions.tech")
   .split(",")
   .map((s) => s.trim())
   .filter(Boolean);
+
+// The canonical public site URL used to build deep links inside emails
+// (verification, password reset). This MUST be the live client site — never an
+// internal or legacy origin — because the link is what the user clicks. It is
+// deliberately separate from FRONTEND_ORIGIN (a CORS allow-list that can contain
+// several origins, including localhost): using origins[0] here previously meant
+// a stray entry could send users a verification link on the wrong domain.
+const siteUrl = (process.env.SITE_URL || process.env.FRONTEND_PRIMARY || origins[0] || "https://netweavesolutions.tech")
+  .trim()
+  .replace(/\/$/, "");
 
 export const env = {
   NODE_ENV: process.env.NODE_ENV || "development",
@@ -33,7 +43,10 @@ export const env = {
   JWT_REFRESH_TTL: process.env.JWT_REFRESH_TTL || "30d",
   API_PUBLIC_URL: process.env.API_PUBLIC_URL || "",
   FRONTEND_ORIGIN: origins,
-  FRONTEND_PRIMARY: origins[0],
+  // Kept for backwards compatibility, but now points at the canonical site URL
+  // (see `siteUrl` above) so every email deep link lands on the live client site.
+  FRONTEND_PRIMARY: siteUrl,
+  SITE_URL: siteUrl,
   COOKIE_DOMAIN: process.env.COOKIE_DOMAIN || undefined,
   // Secure cookies require HTTPS. Default to on in production (unchanged), but
   // off for local development — a `Secure; SameSite=None` cookie is silently

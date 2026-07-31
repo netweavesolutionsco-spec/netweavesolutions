@@ -86,13 +86,25 @@ function RegisterPage() {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // Guard against double submits: a second click while the first request is
+    // still in flight would create a duplicate registration attempt.
+    if (submitting) return;
     if (!form.acceptTerms) return toast.error("Please accept the terms");
     if (!passwordOk) return toast.error("Please choose a stronger password");
     if (form.password !== form.confirmPassword) return toast.error("Passwords do not match");
     setSubmitting(true);
     try {
       const res = await registerFn({ ...form, acceptTerms: true });
-      toast.success(res.message || "Account created successfully. You can sign in now.");
+      if (res.emailSent) {
+        toast.success("Verification email sent. Check your inbox to activate your account.");
+      } else {
+        // The account exists but the email didn't go out — steer the user to the
+        // resend option on the login page rather than implying they can sign in.
+        toast.warning(
+          res.message ||
+            "Account created, but we couldn't send the verification email. Use “Resend it” on the next screen.",
+        );
+      }
       navigate({ to: "/client/login", search: { email: form.email, redirect } as never });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Registration failed");
