@@ -58,6 +58,7 @@ export function AIChatWidget() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: next.map((m) => ({ role: m.role, content: m.content })),
+          currentPage: window.location.pathname,
         }),
       });
       const data = await res.json();
@@ -288,4 +289,3 @@ function MessageBubble({ m }: { m: Msg }) {
     </div>
   );
 }
-

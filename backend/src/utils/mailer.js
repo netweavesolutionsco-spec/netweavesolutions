@@ -184,6 +184,108 @@ export const emailTemplates = {
     };
   },
 
+  /**
+   * Confirmation sent to the client who scheduled a meeting. Includes the
+   * platform, date, time, topic and the meeting link so they have everything
+   * they need in one place.
+   */
+  meetingConfirmation: (meeting) => {
+    const row = (label, value) =>
+      value
+        ? `<tr>
+             <td style="padding:8px 14px;background:#f8fafc;border:1px solid #e2e8f0;font-weight:600;white-space:nowrap">${label}</td>
+             <td style="padding:8px 14px;border:1px solid #e2e8f0">${esc(value)}</td>
+           </tr>`
+        : "";
+
+    const linkButton = meeting.meetingLink
+      ? `<p style="margin:22px 0 0;text-align:center">
+           <a href="${esc(meeting.meetingLink)}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:13px 28px;border-radius:8px;font-size:15px;font-weight:600">Join meeting</a>
+         </p>`
+      : "";
+
+    return {
+      subject: `Meeting request received — ${meeting.title}`,
+      text:
+        `Hi ${meeting.clientName || "there"},\n\n` +
+        `We've received your meeting request. Here are the details:\n\n` +
+        `Platform: ${meeting.platformLabel}\nDate: ${meeting.date}\nTime: ${meeting.time}\n` +
+        `Topic: ${meeting.title}\n` +
+        `Meeting Link: ${meeting.meetingLink || "-"}\n\n` +
+        `Your request is currently pending — we'll confirm shortly.\n\n— Team Netweavesolutions`,
+      html: `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:620px;margin:0 auto;color:#0f172a">
+        <div style="background:linear-gradient(135deg,#4f46e5,#06b6d4);padding:26px;border-radius:12px 12px 0 0;text-align:center">
+          <h1 style="margin:0;color:#fff;font-size:21px">📅 Meeting request received</h1>
+        </div>
+        <div style="border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;padding:24px 26px;background:#fff;font-size:15px;line-height:1.65">
+          <p style="margin:0 0 16px">Hi <b>${esc(meeting.clientName || "there")}</b>,</p>
+          <p style="margin:0 0 18px">Thanks — we've received your meeting request. Here's a summary of what you scheduled:</p>
+          <table style="width:100%;border-collapse:collapse;font-size:14px">
+            ${row("Platform", meeting.platformLabel)}
+            ${row("Date", meeting.date)}
+            ${row("Time", meeting.time)}
+            ${row("Topic", meeting.title)}
+            ${row("Meeting Link", meeting.meetingLink)}
+          </table>
+          ${linkButton}
+          <p style="margin:22px 0 0;color:#475569;font-size:14px">
+            Your request is currently <b>pending</b>. We'll review it and confirm shortly.<br/>
+            <b style="color:#0f172a">Team Netweavesolutions</b>
+          </p>
+        </div>
+      </div>`,
+    };
+  },
+
+  /**
+   * Sent to the client when the team updates their meeting (status change,
+   * rescheduled time, or edited details).
+   */
+  meetingUpdated: (meeting) => {
+    const row = (label, value) =>
+      value
+        ? `<tr>
+             <td style="padding:8px 14px;background:#f8fafc;border:1px solid #e2e8f0;font-weight:600;white-space:nowrap">${label}</td>
+             <td style="padding:8px 14px;border:1px solid #e2e8f0">${esc(value)}</td>
+           </tr>`
+        : "";
+
+    const linkButton = meeting.meetingLink
+      ? `<p style="margin:22px 0 0;text-align:center">
+           <a href="${esc(meeting.meetingLink)}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:13px 28px;border-radius:8px;font-size:15px;font-weight:600">Join meeting</a>
+         </p>`
+      : "";
+
+    return {
+      subject: `Your meeting has been updated — ${meeting.title}`,
+      text:
+        `Hi ${meeting.clientName || "there"},\n\n` +
+        `Your meeting has been updated. Here are the latest details:\n\n` +
+        `Status: ${meeting.statusLabel}\nPlatform: ${meeting.platformLabel}\n` +
+        `Date: ${meeting.date}\nTime: ${meeting.time}\nTopic: ${meeting.title}\n` +
+        `Meeting Link: ${meeting.meetingLink || "-"}\n\n— Team Netweavesolutions`,
+      html: `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:620px;margin:0 auto;color:#0f172a">
+        <div style="background:linear-gradient(135deg,#4f46e5,#06b6d4);padding:26px;border-radius:12px 12px 0 0;text-align:center">
+          <h1 style="margin:0;color:#fff;font-size:21px">🔄 Your meeting has been updated</h1>
+        </div>
+        <div style="border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;padding:24px 26px;background:#fff;font-size:15px;line-height:1.65">
+          <p style="margin:0 0 16px">Hi <b>${esc(meeting.clientName || "there")}</b>,</p>
+          <p style="margin:0 0 18px">Your meeting has been updated. Here are the latest details:</p>
+          <table style="width:100%;border-collapse:collapse;font-size:14px">
+            ${row("Status", meeting.statusLabel)}
+            ${row("Platform", meeting.platformLabel)}
+            ${row("Date", meeting.date)}
+            ${row("Time", meeting.time)}
+            ${row("Topic", meeting.title)}
+            ${row("Meeting Link", meeting.meetingLink)}
+          </table>
+          ${linkButton}
+          <p style="margin:22px 0 0;color:#475569;font-size:14px"><b style="color:#0f172a">Team Netweavesolutions</b></p>
+        </div>
+      </div>`,
+    };
+  },
+
   /** Internal alert sent to the team when a client submits a support request. */
   newSupportRequest: (ticket) => {
     const row = (label, value) =>
@@ -264,6 +366,54 @@ export const emailTemplates = {
       </div>`,
     };
   },
+
+  /**
+   * Sent to a prospective team member when an admin invites them from the Admin
+   * Panel. Company-branded, names the inviter and the assigned role, and carries
+   * a single primary "Accept Invitation" button pointing at the tokenised setup
+   * link. Kept visually consistent with the client-facing templates above.
+   */
+  teamInvitation: ({ fullName, inviterName, role, department, message, acceptUrl, expiresLabel }) => ({
+    subject: `You're invited to join the Netweavesolutions team`,
+    text:
+      `Hi ${fullName || "there"},\n\n` +
+      `${inviterName || "An administrator"} has invited you to join the Netweavesolutions team` +
+      `${role ? ` as ${role}` : ""}${department ? ` (${department})` : ""}.\n\n` +
+      (message ? `Message from ${inviterName || "the team"}:\n${message}\n\n` : "") +
+      `Accept your invitation and set up your account here:\n${acceptUrl}\n\n` +
+      `This invitation${expiresLabel ? ` expires ${expiresLabel}` : " will expire"}. ` +
+      `If you weren't expecting this, you can safely ignore this email.\n\n— Team Netweavesolutions`,
+    html: `<div style="font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;max-width:600px;margin:0 auto;color:#0f172a">
+      <div style="background:linear-gradient(135deg,#4f46e5,#06b6d4);padding:30px 26px;border-radius:12px 12px 0 0;text-align:center">
+        <h1 style="margin:0;color:#fff;font-size:22px">You're invited 🎉</h1>
+        <p style="margin:6px 0 0;color:rgba(255,255,255,.85);font-size:13px">Join the Netweavesolutions team</p>
+      </div>
+      <div style="border:1px solid #e2e8f0;border-top:none;border-radius:0 0 12px 12px;padding:26px;background:#fff;font-size:15px;line-height:1.65">
+        <p style="margin:0 0 14px">Hi <b>${esc(fullName || "there")}</b>,</p>
+        <p style="margin:0 0 18px">
+          <b>${esc(inviterName || "An administrator")}</b> has invited you to join the
+          <b>Netweavesolutions</b> team${role ? ` as <b>${esc(role)}</b>` : ""}${department ? ` in <b>${esc(department)}</b>` : ""}.
+        </p>
+        ${
+          message
+            ? `<div style="margin:0 0 20px;padding:14px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;line-height:1.6;white-space:pre-wrap;color:#334155">${esc(message)}</div>`
+            : ""
+        }
+        <p style="margin:0 0 20px;text-align:center">
+          <a href="${esc(acceptUrl)}" style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;padding:13px 28px;border-radius:8px;font-size:15px;font-weight:600">Accept Invitation</a>
+        </p>
+        <p style="margin:0 0 14px;font-size:13px;color:#64748b">
+          If the button doesn't work, paste this link into your browser:<br/>
+          <span style="word-break:break-all;color:#4f46e5">${esc(acceptUrl)}</span>
+        </p>
+        <p style="margin:0 0 14px;font-size:13px;color:#64748b">This invitation${expiresLabel ? ` expires ${esc(expiresLabel)}` : " will expire"}.</p>
+        <p style="margin:22px 0 0;color:#475569">
+          Weren't expecting this? You can safely ignore this email.<br/>
+          <b style="color:#0f172a">Team Netweavesolutions</b>
+        </p>
+      </div>
+    </div>`,
+  }),
 
   /** Auto-reply confirmation sent to the person who filled in the form. */
   leadThankYou: (lead) => ({

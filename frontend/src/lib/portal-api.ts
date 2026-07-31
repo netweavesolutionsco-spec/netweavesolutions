@@ -143,7 +143,13 @@ export interface Payment {
   createdAt: string;
 }
 
-export type MeetingPlatform = "google_meet" | "microsoft_teams" | "zoom" | "other";
+export type MeetingPlatform =
+  | "google_meet"
+  | "microsoft_teams"
+  | "zoom"
+  | "google_calendar"
+  | "phone_call"
+  | "other";
 export type MeetingStatus =
   | "pending"
   | "accepted"
@@ -164,6 +170,7 @@ export interface Meeting {
   durationMinutes: number;
   status: MeetingStatus;
   platform?: MeetingPlatform | null;
+  meetingLink?: string;
   googleMeetUrl?: string;
   zoomUrl?: string;
   notes?: string;
@@ -431,7 +438,8 @@ export function useCreateMeeting() {
       agenda?: string;
       scheduledAt: string;
       durationMinutes: number;
-      platform?: MeetingPlatform;
+      platform: MeetingPlatform;
+      meetingLink: string;
     }) => api.post<{ meeting: Meeting }>("/portal/meetings", input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: portalKeys.dashboard });

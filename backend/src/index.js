@@ -10,6 +10,7 @@ import authRoutes from "./routes/auth.routes.js";
 import profileRoutes from "./routes/profile.routes.js";
 import portalRoutes from "./routes/portal.routes.js";
 import leadsRoutes from "./routes/leads.routes.js";
+import teamRoutes from "./routes/team.routes.js";
 import { errorHandler, notFound } from "./middleware/error.js";
 
 const app = express();
@@ -80,6 +81,7 @@ app.use("/auth", authRoutes);
 app.use("/profile", profileRoutes);
 app.use("/portal", portalRoutes);
 app.use("/leads", leadsRoutes);
+app.use("/team", teamRoutes);
 
 // -------------------- Error Handling --------------------
 app.use(notFound);

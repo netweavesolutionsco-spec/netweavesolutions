@@ -26,12 +26,18 @@ export const Route = createFileRoute("/client/meetings")({
 const PLATFORMS: { value: MeetingPlatform; label: string }[] = [
   { value: "google_meet", label: "Google Meet" },
   { value: "microsoft_teams", label: "Microsoft Teams" },
+  { value: "zoom", label: "Zoom" },
+  { value: "google_calendar", label: "Google Calendar" },
+  { value: "phone_call", label: "Phone Call" },
+  { value: "other", label: "Other" },
 ];
 
 const PLATFORM_LABELS: Record<string, string> = {
   google_meet: "Google Meet",
   microsoft_teams: "Microsoft Teams",
   zoom: "Zoom",
+  google_calendar: "Google Calendar",
+  phone_call: "Phone Call",
   other: "Other",
 };
 
@@ -43,6 +49,7 @@ function MeetingsPage() {
   const [description, setDescription] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [meetingLink, setMeetingLink] = useState("");
   const now = Date.now();
   const upcoming = (meetings.data?.data ?? []).filter((meeting) => new Date(meeting.scheduledAt).getTime() >= now && meeting.status !== "cancelled" && meeting.status !== "rejected");
   const past = (meetings.data?.data ?? []).filter((meeting) => new Date(meeting.scheduledAt).getTime() < now || meeting.status === "completed");
@@ -53,6 +60,16 @@ function MeetingsPage() {
       toast.error("Please choose a valid date and time");
       return;
     }
+    if (!meetingLink.trim()) {
+      toast.error("Please provide a meeting link");
+      return;
+    }
+    try {
+      new URL(meetingLink);
+    } catch {
+      toast.error("Please provide a valid meeting URL");
+      return;
+    }
     try {
       await createMeeting.mutateAsync({
         platform,
@@ -60,11 +77,13 @@ function MeetingsPage() {
         agenda: description,
         scheduledAt: scheduledAt.toISOString(),
         durationMinutes: 30,
+        meetingLink,
       });
       setTitle("");
       setDescription("");
       setDate("");
       setTime("");
+      setMeetingLink("");
       setPlatform("google_meet");
       toast.success("Meeting request submitted — status: Pending");
     } catch (error) {
@@ -123,10 +142,21 @@ function MeetingsPage() {
               <Input id="meeting-topic" value={title} onChange={(event) => setTitle(event.target.value)} placeholder="What is this meeting about?" />
             </div>
             <div className="space-y-1.5">
+              <Label htmlFor="meeting-link">Meeting Link</Label>
+              <Input
+                id="meeting-link"
+                type="url"
+                inputMode="url"
+                value={meetingLink}
+                onChange={(event) => setMeetingLink(event.target.value)}
+                placeholder="https://meet.google.com/... or https://zoom.us/j/... or https://teams.microsoft.com/..."
+              />
+            </div>
+            <div className="space-y-1.5">
               <Label htmlFor="meeting-description">Description (optional)</Label>
               <Textarea id="meeting-description" rows={4} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="Add any context or agenda" />
             </div>
-            <Button className="w-full" disabled={!title.trim() || !date || !time || createMeeting.isPending} onClick={submit}>
+            <Button className="w-full" disabled={!title.trim() || !date || !time || !meetingLink.trim() || createMeeting.isPending} onClick={submit}>
               {createMeeting.isPending ? "Scheduling..." : "Schedule Meeting"}
             </Button>
           </div>
@@ -153,6 +183,7 @@ function MeetingList({ meetings }: { meetings: Meeting[] }) {
           </p>
           {meeting.agenda && <p className="mt-2 text-sm leading-6">{meeting.agenda}</p>}
           <div className="mt-3 flex flex-wrap gap-2">
+            {meeting.meetingLink && <Button asChild variant="outline" size="sm"><a href={meeting.meetingLink} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" />Open Meeting</a></Button>}
             {meeting.googleMeetUrl && <Button asChild variant="outline" size="sm"><a href={meeting.googleMeetUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" />Google Meet</a></Button>}
             {meeting.zoomUrl && <Button asChild variant="outline" size="sm"><a href={meeting.zoomUrl} target="_blank" rel="noreferrer"><ExternalLink className="h-4 w-4" />Zoom</a></Button>}
           </div>

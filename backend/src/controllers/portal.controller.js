@@ -18,6 +18,8 @@ const PLATFORM_LABELS = {
   google_meet: "Google Meet",
   microsoft_teams: "Microsoft Teams",
   zoom: "Zoom",
+  google_calendar: "Google Calendar",
+  phone_call: "Phone Call",
   other: "Other",
 };
 
@@ -98,17 +100,38 @@ export async function respondToQuotation(req, res) {
 export async function createMeeting(req, res) {
   const meeting = await portal.createMeeting(req.client, req.body);
   const scheduled = new Date(meeting.scheduledAt);
+  const date = scheduled.toLocaleDateString("en-IN", { dateStyle: "medium" });
+  const time = scheduled.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+  const platformLabel = PLATFORM_LABELS[meeting.platform] ?? "Meeting";
+
+  // Internal alert to the team.
   notifyCompany(
     emailTemplates.newMeeting({
       clientName: meeting.clientName,
       clientEmail: meeting.clientEmail,
-      platformLabel: PLATFORM_LABELS[meeting.platform] ?? "Meeting",
-      date: scheduled.toLocaleDateString("en-IN", { dateStyle: "medium" }),
-      time: scheduled.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }),
+      platformLabel,
+      date,
+      time,
       title: meeting.title,
       agenda: meeting.agenda,
     }),
   );
+
+  // Confirmation email to the client who scheduled it.
+  if (meeting.clientEmail) {
+    void sendMail({
+      to: meeting.clientEmail,
+      ...emailTemplates.meetingConfirmation({
+        clientName: meeting.clientName,
+        platformLabel,
+        date,
+        time,
+        title: meeting.title,
+        meetingLink: meeting.meetingLink,
+      }),
+    }).catch((err) => console.error("[portal] meeting confirmation email failed:", err?.message ?? err));
+  }
+
   res.status(201).json({ meeting });
 }
 
@@ -138,6 +161,41 @@ export async function createProjectRequirement(req, res) {
 
 export async function updateMeeting(req, res) {
   res.json({ meeting: await portal.updateMeeting(req.client, req.params.meetingId, req.body) });
+}
+
+const STATUS_LABELS = {
+  pending: "Pending",
+  accepted: "Accepted",
+  rejected: "Rejected",
+  completed: "Completed",
+  scheduled: "Scheduled",
+  cancelled: "Cancelled",
+  rescheduled: "Rescheduled",
+};
+
+export async function adminUpdateMeeting(req, res) {
+  const meeting = await portal.adminUpdateMeeting(req.admin, req.params.meetingId, req.body);
+  const scheduled = new Date(meeting.scheduledAt);
+  const date = scheduled.toLocaleDateString("en-IN", { dateStyle: "medium" });
+  const time = scheduled.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+
+  // Automatically email the client that their meeting was updated.
+  if (meeting.clientEmail) {
+    void sendMail({
+      to: meeting.clientEmail,
+      ...emailTemplates.meetingUpdated({
+        clientName: meeting.clientName,
+        statusLabel: STATUS_LABELS[meeting.status] ?? meeting.status,
+        platformLabel: PLATFORM_LABELS[meeting.platform] ?? "Meeting",
+        date,
+        time,
+        title: meeting.title,
+        meetingLink: meeting.meetingLink,
+      }),
+    }).catch((err) => console.error("[portal] meeting update email failed:", err?.message ?? err));
+  }
+
+  res.json({ meeting });
 }
 
 export async function markNotificationRead(req, res) {

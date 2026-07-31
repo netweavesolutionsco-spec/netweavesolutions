@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageHeader } from "@/admin/components/PageHeader";
 import { DataTable, type Column } from "@/admin/components/DataTable";
@@ -11,11 +11,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Check, Eye, Loader2, Mail, X, CheckCheck } from "lucide-react";
+import { Check, Eye, Loader2, Mail, X, CheckCheck, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { useIsAdmin } from "@/hooks/useAuthUser";
 import { Navigate } from "@tanstack/react-router";
-import { createAdminNotification, createClientNotification } from "@/admin/lib/notifications";
+import { buildApiUrl } from "@/lib/client-api";
 
 type SupabaseLoose = {
   from: (table: string) => {
@@ -37,6 +37,8 @@ const PLATFORM_LABELS: Record<string, string> = {
   google_meet: "Google Meet",
   microsoft_teams: "Microsoft Teams",
   zoom: "Zoom",
+  google_calendar: "Google Calendar",
+  phone_call: "Phone Call",
   other: "Other",
 };
 
@@ -46,6 +48,7 @@ interface MeetingRow {
   clientName: string;
   clientEmail: string;
   platform: string;
+  meetingLink: string;
   scheduledAt: string;
   title: string;
   agenda: string;
@@ -68,61 +71,74 @@ export function MeetingRequestsPage() {
   const [active, setActive] = useState<MeetingRow | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
 
+  const load = useCallback(async () => {
+    try {
+      const { data, error } = await db
+        .from("project_meetings")
+        .select(
+          "id, client_id, client_name, client_email, platform, meeting_link, scheduled_at, title, agenda, status, created_at",
+        )
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+
+      setMeetings(
+        (
+          (data ?? []) as Array<{
+            id: string;
+            client_id: string | null;
+            client_name: string | null;
+            client_email: string | null;
+            platform: string | null;
+            meeting_link: string | null;
+            scheduled_at: string;
+            title: string | null;
+            agenda: string | null;
+            status: string | null;
+            created_at: string | null;
+          }>
+        ).map((m) => ({
+          id: m.id,
+          clientId: m.client_id ?? null,
+          clientName: m.client_name || "—",
+          clientEmail: m.client_email || "",
+          platform: m.platform || "",
+          meetingLink: m.meeting_link || "",
+          scheduledAt: m.scheduled_at,
+          title: m.title || "",
+          agenda: m.agenda || "",
+          status: m.status || "pending",
+          createdAt: m.created_at || new Date().toISOString(),
+        })),
+      );
+    } catch (e) {
+      console.error("Error loading meeting requests:", e);
+      toast.error(e instanceof Error ? e.message : "Failed to load meeting requests");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Initial load + realtime auto-update whenever project_meetings changes, so
+  // new client requests and status changes appear without a manual refresh.
   useEffect(() => {
     if (!isAdmin) return;
-    let cancelled = false;
+    void load();
 
-    async function load() {
-      try {
-        const { data, error } = await db
-          .from("project_meetings")
-          .select(
-            "id, client_id, client_name, client_email, platform, scheduled_at, title, agenda, status, created_at",
-          )
-          .order("created_at", { ascending: false });
-        if (error) throw error;
-        if (cancelled) return;
+    const channel = supabase
+      .channel("project_meetings_feed")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "project_meetings" },
+        () => {
+          void load();
+        },
+      )
+      .subscribe();
 
-        setMeetings(
-          (
-            (data ?? []) as Array<{
-              id: string;
-              client_id: string | null;
-              client_name: string | null;
-              client_email: string | null;
-              platform: string | null;
-              scheduled_at: string;
-              title: string | null;
-              agenda: string | null;
-              status: string | null;
-              created_at: string | null;
-            }>
-          ).map((m) => ({
-            id: m.id,
-            clientId: m.client_id ?? null,
-            clientName: m.client_name || "—",
-            clientEmail: m.client_email || "",
-            platform: m.platform || "",
-            scheduledAt: m.scheduled_at,
-            title: m.title || "",
-            agenda: m.agenda || "",
-            status: m.status || "pending",
-            createdAt: m.created_at || new Date().toISOString(),
-          })),
-        );
-      } catch (e) {
-        console.error("Error loading meeting requests:", e);
-        toast.error(e instanceof Error ? e.message : "Failed to load meeting requests");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    load();
     return () => {
-      cancelled = true;
+      supabase.removeChannel(channel);
     };
-  }, [isAdmin]);
+  }, [isAdmin, load]);
 
   const updateStatus = async (row: MeetingRow, status: string) => {
     const previous = meetings;
@@ -130,28 +146,35 @@ export function MeetingRequestsPage() {
     const id = row.id;
     setSavingId(id);
     setMeetings((rows) => rows.map((r) => (r.id === id ? { ...r, status } : r)));
-    const { error } = await db.from("project_meetings").update({ status }).eq("id", id);
-    setSavingId(null);
-    if (error) {
+
+    try {
+      // Route through the backend so the client receives an automatic email and
+      // the client/admin notification feeds (realtime) are updated in one place.
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData.session?.access_token;
+      if (!token) throw new Error("Your admin session has expired. Please sign in again.");
+
+      const res = await fetch(buildApiUrl(`/portal/admin/meetings/${id}`), {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const payload = (await res.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error || "Could not update status");
+      }
+    } catch (error) {
       setMeetings(previous);
-      toast.error(error.message || "Could not update status");
+      setSavingId(null);
+      toast.error(error instanceof Error ? error.message : "Could not update status");
       return;
     }
+
+    setSavingId(null);
     setActive((current) => (current && current.id === id ? { ...current, status } : current));
-    void createClientNotification(row.clientId, {
-      type: "meeting_status",
-      title: `Meeting ${label}`,
-      body: `"${row.title || "Your meeting"}" has been marked ${label.toLowerCase()}.`,
-      actionUrl: "/client/meetings",
-    });
-    void createAdminNotification({
-      title: `Meeting ${label}`,
-      description: `${row.clientName}'s meeting request was marked ${label.toLowerCase()}.`,
-      userName: row.clientName,
-      relatedModule: "meetings",
-      type: status === "rejected" ? "warning" : "success",
-      actionUrl: "/admin/meetings",
-    });
     toast.success(`Meeting ${label}`);
   };
 
@@ -171,6 +194,21 @@ export function MeetingRequestsPage() {
       header: "Platform",
       render: (r) =>
         PLATFORM_LABELS[r.platform] || <span className="text-muted-foreground">—</span>,
+    },
+    {
+      key: "meetingLink",
+      header: "Meeting Link",
+      render: (r) =>
+        r.meetingLink ? (
+          <Button asChild variant="ghost" size="sm" className="h-7 px-2 text-xs">
+            <a href={r.meetingLink} target="_blank" rel="noreferrer">
+              <ExternalLink className="h-3 w-3" />
+              Open Meeting
+            </a>
+          </Button>
+        ) : (
+          <span className="text-xs text-muted-foreground">Not Available</span>
+        ),
     },
     {
       key: "scheduledAt",
@@ -323,6 +361,8 @@ export function MeetingRequestsPage() {
                         minute: "2-digit",
                       }),
                     ],
+                    ["Status", badgeLabel(active.status)],
+                    ["Created", new Date(active.createdAt).toLocaleString()],
                   ] as const
                 ).map(([label, value]) => (
                   <div key={label} className="col-span-2 grid grid-cols-[6rem_1fr] gap-4">
@@ -332,6 +372,24 @@ export function MeetingRequestsPage() {
                     </dd>
                   </div>
                 ))}
+                <div className="col-span-2 grid grid-cols-[6rem_1fr] gap-4">
+                  <dt className="text-muted-foreground">Meeting Link</dt>
+                  <dd className="break-words font-medium">
+                    {active.meetingLink ? (
+                      <a
+                        href={active.meetingLink}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-primary underline underline-offset-2"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Open Meeting
+                      </a>
+                    ) : (
+                      <span className="font-normal text-muted-foreground">Not Available</span>
+                    )}
+                  </dd>
+                </div>
               </dl>
 
               <div>

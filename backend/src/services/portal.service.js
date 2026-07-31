@@ -643,6 +643,35 @@ export async function respondToQuotation(client, quotationId, input) {
 
 export async function createMeeting(client, input) {
   if (input.projectId) await requireProject(client.id, input.projectId);
+
+  // Reject meetings scheduled in the past.
+  const scheduledDate = new Date(input.scheduledAt);
+  if (Number.isNaN(scheduledDate.getTime())) {
+    const invalid = new Error("Invalid meeting date or time");
+    invalid.status = 400;
+    throw invalid;
+  }
+  if (scheduledDate.getTime() < Date.now()) {
+    const past = new Error("Meetings cannot be scheduled in the past");
+    past.status = 400;
+    throw past;
+  }
+
+  // Prevent a duplicate meeting for the same client at the exact same time.
+  const { data: duplicate, error: duplicateError } = await supabaseAdmin
+    .from("project_meetings")
+    .select("id")
+    .eq("client_id", client.id)
+    .eq("scheduled_at", scheduledDate.toISOString())
+    .not("status", "in", "(cancelled,rejected)")
+    .limit(1);
+  if (duplicateError) throw duplicateError;
+  if (duplicate && duplicate.length > 0) {
+    const conflict = new Error("You already have a meeting scheduled at this date and time");
+    conflict.status = 409;
+    throw conflict;
+  }
+
   const { data, error } = await supabaseAdmin
     .from("project_meetings")
     .insert({
@@ -655,6 +684,7 @@ export async function createMeeting(client, input) {
       scheduled_at: input.scheduledAt,
       duration_minutes: input.durationMinutes,
       platform: input.platform,
+      meeting_link: input.meetingLink,
       google_meet_url: input.googleMeetUrl,
       zoom_url: input.zoomUrl,
       notes: input.notes,
@@ -667,7 +697,7 @@ export async function createMeeting(client, input) {
   await insertNotification(client.id, "meeting_scheduled", "Meeting request received", data.title, "/client/meetings");
   await insertAdminNotification({
     title: "Meeting scheduled",
-    description: data.title,
+    description: `New meeting request from ${client.fullName || client.email}.`,
     userName: client.fullName || client.email,
     relatedModule: "meetings",
     type: "info",
@@ -706,8 +736,65 @@ export async function updateMeeting(client, meetingId, input) {
   return camelize(data);
 }
 
-export async function markNotificationRead(clientId, notificationId) {
+/**
+ * Admin-side meeting update. Unlike updateMeeting (which is scoped to the
+ * authenticated client's own rows), this is called by a verified admin from
+ * the Admin Panel and can update ANY client's meeting. It uses the service
+ * role, notifies the client (feed + realtime) and returns the fresh row so the
+ * controller can email the client. Cancellation notifies both sides.
+ */
+export async function adminUpdateMeeting(admin, meetingId, input) {
+  const patch = clean({
+    title: input.title,
+    agenda: input.agenda,
+    scheduled_at: input.scheduledAt,
+    duration_minutes: input.durationMinutes,
+    platform: input.platform,
+    meeting_link: input.meetingLink,
+    status: input.status,
+    notes: input.notes,
+  });
+
   const { data, error } = await supabaseAdmin
+    .from("project_meetings")
+    .update(patch)
+    .eq("id", meetingId)
+    .select("*")
+    .single();
+  if (error) throw error;
+  if (!data) {
+    const notFound = new Error("Meeting not found");
+    notFound.status = 404;
+    throw notFound;
+  }
+
+  const isCancelled = input.status === "cancelled" || input.status === "rejected";
+
+  // Notify the client (their notification feed drives the client-portal
+  // realtime subscription).
+  await insertNotification(
+    data.client_id,
+    "meeting_updated",
+    isCancelled ? "Your meeting was cancelled" : "Your meeting has been updated",
+    data.title,
+    "/client/meetings",
+  );
+
+  // Admin-facing notification (drives the admin realtime feed). For a
+  // cancellation this is the "notify both admin and client" requirement.
+  await insertAdminNotification({
+    title: isCancelled ? "Meeting cancelled" : "Meeting updated",
+    description: `${data.client_name || data.client_email || "A client"}'s meeting "${data.title}" was ${input.status ? input.status : "updated"}.`,
+    userName: data.client_name || data.client_email,
+    relatedModule: "meetings",
+    type: isCancelled ? "warning" : "success",
+    actionUrl: "/admin/meetings",
+  });
+
+  return camelize(data);
+}
+
+export async function markNotificationRead(clientId, notificationId) {  const { data, error } = await supabaseAdmin
     .from("client_notifications")
     .update({ read_at: new Date().toISOString() })
     .eq("id", notificationId)

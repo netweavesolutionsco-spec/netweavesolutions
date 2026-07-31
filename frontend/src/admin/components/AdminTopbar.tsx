@@ -7,9 +7,7 @@ import {
   MessageSquare,
   Sun,
   Moon,
-  Plus,
   Command as CommandIcon,
-  Sparkles,
   LogOut,
   Settings as SettingsIcon,
   UserCircle,
@@ -29,7 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 import { useAuthUser, useIsAdmin } from "@/hooks/useAuthUser";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
@@ -39,7 +37,6 @@ export function AdminTopbar() {
   const { theme, setTheme } = useTheme();
   const [query, setQuery] = useState("");
   const { user } = useAuthUser();
-  const navigate = useNavigate();
   const { isAdmin } = useIsAdmin();
   const [profile, setProfile] = useState<{
     display_name: string | null;
@@ -100,37 +97,6 @@ export function AdminTopbar() {
         </div>
 
         <div className="ml-auto flex items-center gap-1 sm:gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="sm"
-                className="hidden gap-1.5 rounded-xl bg-linear-to-r from-(--brand) to-(--brand-3) text-white shadow-md hover:opacity-95 sm:inline-flex"
-              >
-                <Plus className="h-4 w-4" /> Create
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Quick actions</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <Sparkles className="mr-2 h-4 w-4" /> New Blog Post
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onSelect={() =>
-                  navigate({ to: "/admin/projects", search: { new: "1" } as never })
-                }
-              >
-                <Sparkles className="mr-2 h-4 w-4" /> New Project
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Sparkles className="mr-2 h-4 w-4" /> Invite Team Member
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Sparkles className="mr-2 h-4 w-4" /> Add Service
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
           <Button
             variant="ghost"
             size="icon"

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
-import { requireAuth } from "../middleware/auth.js";
+import { requireAuth, requireAdmin } from "../middleware/auth.js";
 import { asyncHandler } from "../middleware/asyncHandler.js";
 import { validate } from "../middleware/validate.js";
 import * as controller from "../controllers/portal.controller.js";
@@ -90,20 +90,38 @@ const quotationResponseSchema = z.object({
   revisionNote: z.string().trim().max(3000).optional(),
 });
 
+// A meeting link must be a valid http(s) URL. We accept any HTTPS meeting
+// provider (Google Meet, Zoom, Microsoft Teams, and others), not just a fixed
+// allow-list, and reject anything that isn't a proper web URL.
+const meetingLinkSchema = z
+  .string()
+  .trim()
+  .url({ message: "Meeting link must be a valid URL" })
+  .max(4000)
+  .refine((value) => /^https?:\/\//i.test(value), {
+    message: "Meeting link must start with http:// or https://",
+  });
+
 const meetingSchema = z.object({
   projectId: uuid.optional(),
   title: z.string().trim().min(2).max(180),
   agenda: z.string().trim().max(5000).optional(),
   scheduledAt: z.string().datetime(),
   durationMinutes: z.number().int().min(15).max(480).default(30),
-  platform: z.enum(["google_meet", "microsoft_teams", "zoom", "other"]).optional(),
+  platform: z.enum(["google_meet", "microsoft_teams", "zoom", "google_calendar", "phone_call", "other"]),
+  meetingLink: meetingLinkSchema,
   googleMeetUrl: z.string().trim().url().optional(),
   zoomUrl: z.string().trim().url().optional(),
   notes: z.string().trim().max(5000).optional(),
 });
 
 const meetingUpdateSchema = meetingSchema
-  .extend({ status: z.enum(["scheduled", "completed", "cancelled", "rescheduled"]).optional() })
+  .extend({
+    meetingLink: meetingLinkSchema.optional(),
+    status: z
+      .enum(["pending", "accepted", "rejected", "completed", "scheduled", "cancelled", "rescheduled"])
+      .optional(),
+  })
   .partial();
 
 const supportSchema = z.object({
@@ -138,6 +156,37 @@ const requirementSchema = z.object({
     .optional()
     .transform((v) => v || "contact-page"),
 });
+
+const adminMeetingUpdateSchema = z
+  .object({
+    title: z.string().trim().min(2).max(180),
+    agenda: z.string().trim().max(5000),
+    scheduledAt: z.string().datetime(),
+    durationMinutes: z.number().int().min(15).max(480),
+    platform: z.enum(["google_meet", "microsoft_teams", "zoom", "google_calendar", "phone_call", "other"]),
+    meetingLink: meetingLinkSchema,
+    notes: z.string().trim().max(5000),
+    status: z.enum([
+      "pending",
+      "accepted",
+      "rejected",
+      "completed",
+      "scheduled",
+      "cancelled",
+      "rescheduled",
+    ]),
+  })
+  .partial();
+
+// Admin-only meeting update — authenticated via the admin's Supabase token and
+// an admin/editor role check (see requireAdmin). Registered BEFORE the
+// client-facing requireAuth gate below so it uses the admin gate instead.
+router.patch(
+  "/admin/meetings/:meetingId",
+  requireAdmin,
+  validate(adminMeetingUpdateSchema),
+  asyncHandler(controller.adminUpdateMeeting),
+);
 
 router.use(requireAuth);
 

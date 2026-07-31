@@ -1,35 +1,29 @@
 import { createFileRoute } from "@tanstack/react-router";
-
-const SYSTEM_PROMPT = `You are the friendly, expert AI Solutions Architect for Netweavesolutions, a top-tier Software Development Agency.
-
-Tagline: Transforming Ideas Into Powerful Digital Solutions.
-
-Services: Website Development, Custom ERPs (School/Hospital), Mobile Apps (Flutter / React Native), Custom Software, and UI/UX Design.
-
-Pricing Tiers (INR):
-- Starter — ₹15,000: up to 5-page responsive website.
-- Professional — ₹49,000: complex website, web app, CMS dashboard, ERP/CRM base module, or mobile app scope.
-- Enterprise — ₹1,49,000: multi-module ERP, SaaS, mobile apps, custom software, and dedicated engineering team.
-
-Typical timelines: Landing site 1–2 wks · Web app 6–10 wks · Mobile app 8–12 wks · ERP 10–16 wks.
-Tech stack: React 19, Next.js 15, TypeScript, Tailwind v4, Flutter, React Native, Node/Express, PostgreSQL and MongoDB.
-
-Rules:
-- Keep replies short, friendly and useful (2–4 short paragraphs or bullets max).
-- Use markdown for lists/bold.
-  - If asked for a precise quote, suggest the Cost Estimator and to share requirements at netweavesolutions.co@gmail.com.
-- Never invent features or prices outside the list above.
-- If off-topic, gently steer back to Netweavesolutions services.`;
+import {
+  buildKnowledgeContext,
+  answerFromKnowledge,
+  notFoundReply,
+  serviceFailureReply,
+} from "@/lib/site-knowledge";
 
 /**
- * Provider resolution. Keys are read from server-side env only — they are never
- * bundled into the browser (this handler runs on the server), so no key is ever
- * exposed to the frontend.
+ * Production-ready AI chatbot endpoint.
  *
- * The first configured provider wins, so an existing Lovable deployment keeps
- * working untouched while self-hosted deploys can use Gemini or any
- * OpenAI-compatible endpoint instead.
+ * Architecture:
+ *  - PRIMARY: Local knowledge-base engine answers common questions directly from
+ *    website data (services, pricing, portfolio, FAQs, tech, company info).
+ *    Works instantly, requires no API key, understands follow-up context.
+ *  - ENHANCEMENT: When an AI provider key is configured, the LLM gets the full
+ *    knowledge base injected as context and can handle nuanced/complex questions.
+ *    Gracefully falls back to the local engine on failure/timeout.
+ *  - FAILURE MODES:
+ *    • Info genuinely not on the site → "I couldn't find that... connect with team"
+ *    • AI service unreachable / times out → "I'm having trouble... contact team"
+ *
+ * The assistant always works, regardless of whether an API key is set. The LLM
+ * is an accelerator, not a requirement.
  */
+
 type Provider = {
   name: string;
   url: string;
@@ -37,6 +31,10 @@ type Provider = {
   model: string;
 };
 
+/**
+ * Resolve the AI provider from server-side env vars. Keys are never bundled to
+ * the browser (this handler runs on the server). First configured provider wins.
+ */
 function resolveProvider(): Provider | null {
   const lovable = process.env.LOVABLE_API_KEY;
   if (lovable) {
@@ -50,8 +48,6 @@ function resolveProvider(): Provider | null {
 
   const gemini = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (gemini) {
-    // Google exposes an OpenAI-compatible surface, so the request/response
-    // shape below stays identical across every provider.
     return {
       name: "gemini",
       url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
@@ -75,25 +71,84 @@ function resolveProvider(): Provider | null {
   return null;
 }
 
+/**
+ * Call the AI provider with the knowledge base injected. Returns the reply or
+ * null on failure (timeout, network error, rate limit, etc).
+ */
+async function callAI(
+  provider: Provider,
+  history: Array<{ role: string; content: string }>,
+  currentPage?: string,
+): Promise<string | null> {
+  const systemPrompt = `You are the friendly, expert assistant for **Netweavesolutions**, a premium software development agency.
+
+**Your role:** Help visitors understand our services, pricing, portfolio, tech stack, and process. Answer naturally, keep replies short (2–4 paragraphs or bullets max), use markdown for lists/bold, and always ground answers in the knowledge base below — never invent features or prices.
+
+If asked for an exact quote, suggest the Cost Calculator or to email ${buildKnowledgeContext().match(/email ([^\s,]+)/)?.[1] ?? "netweavesolutions.co@gmail.com"}. If off-topic, gently steer back to Netweavesolutions services.
+
+---
+
+# WEBSITE KNOWLEDGE BASE
+
+${buildKnowledgeContext(currentPage)}
+`;
+
+  const messages = [
+    { role: "system", content: systemPrompt },
+    ...history.slice(-20).map((m) => ({
+      role: m.role === "assistant" ? "assistant" : "user",
+      content: String(m.content ?? ""),
+    })),
+  ];
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000); // 15s timeout
+
+    const res = await fetch(provider.url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${provider.key}`,
+      },
+      body: JSON.stringify({ model: provider.model, messages }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      console.error(
+        `[ai-chat] ${provider.name} HTTP ${res.status}`,
+        await res.text().catch(() => ""),
+      );
+      return null;
+    }
+
+    const data = (await res.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+    };
+    const reply = data.choices?.[0]?.message?.content ?? "";
+    return reply || null;
+  } catch (error) {
+    if ((error as Error).name === "AbortError") {
+      console.warn(`[ai-chat] ${provider.name} request timed out`);
+    } else {
+      console.error(`[ai-chat] ${provider.name} request failed`, error);
+    }
+    return null;
+  }
+}
+
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
-        const provider = resolveProvider();
-        if (!provider) {
-          console.error(
-            "[ai-chat] No AI provider configured. Set GEMINI_API_KEY, OPENAI_API_KEY or LOVABLE_API_KEY.",
-          );
-          return new Response(
-            JSON.stringify({
-              error:
-                "The AI assistant isn't available right now. Please email netweavesolutions.co@gmail.com and our team will help you directly.",
-            }),
-            { status: 503, headers: { "content-type": "application/json" } },
-          );
-        }
-
-        let payload: { messages?: Array<{ role: string; content: string }>; message?: string };
+        let payload: {
+          messages?: Array<{ role: string; content: string }>;
+          message?: string;
+          currentPage?: string;
+        };
         try {
           payload = await request.json();
         } catch {
@@ -105,70 +160,63 @@ export const Route = createFileRoute("/api/chat")({
           history.push({ role: "user", content: payload.message });
         }
 
-        const messages = [
-          { role: "system", content: SYSTEM_PROMPT },
-          ...history.slice(-20).map((m) => ({
-            role: m.role === "assistant" ? "assistant" : "user",
-            content: String(m.content ?? ""),
-          })),
-        ];
-
-        let res: Response;
-        try {
-          res = await fetch(provider.url, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${provider.key}`,
-            },
-            body: JSON.stringify({
-              model: provider.model,
-              messages,
-            }),
-          });
-        } catch (error) {
-          console.error(`[ai-chat] ${provider.name} request failed`, error);
-          return new Response(
-            JSON.stringify({
-              error: "Sorry, I couldn't reach the AI service. Please try again in a moment.",
-            }),
-            { status: 502, headers: { "content-type": "application/json" } },
-          );
+        if (history.length === 0) {
+          return new Response(JSON.stringify({ error: "No message provided" }), { status: 400 });
         }
 
-        if (!res.ok) {
-          const text = await res.text().catch(() => "");
-          const status = res.status === 429 || res.status === 402 ? res.status : 502;
-          const msg =
-            res.status === 429
-              ? "I'm getting a lot of questions right now — please try again in a moment."
-              : res.status === 402
-                ? "AI credits exhausted. Please contact netweavesolutions.co@gmail.com."
-                : res.status === 401 || res.status === 403
-                  ? "The AI assistant isn't configured correctly. Please contact netweavesolutions.co@gmail.com."
-                  : "Sorry, I couldn't reach the AI service. Please try again.";
-          console.error(`[ai-chat] ${provider.name} error`, res.status, text);
-          return new Response(JSON.stringify({ error: msg }), {
-            status,
+        const userMessage = history[history.length - 1].content;
+        const currentPage = payload.currentPage;
+
+        // PRIMARY PATH: Try local knowledge-base engine first (instant, no API required).
+        const localReply = answerFromKnowledge(userMessage, history.slice(0, -1));
+        if (localReply) {
+          return new Response(JSON.stringify({ reply: localReply }), {
             headers: { "content-type": "application/json" },
           });
         }
 
-        const data = (await res.json()) as {
-          choices?: Array<{ message?: { content?: string } }>;
-        };
-        const reply = data.choices?.[0]?.message?.content ?? "";
-        if (!reply) {
-          return new Response(
-            JSON.stringify({
-              error: "I didn't get a reply that time — could you rephrase your question?",
-            }),
-            { status: 502, headers: { "content-type": "application/json" } },
-          );
+        // ENHANCEMENT PATH: If a provider is configured, try the LLM with full context.
+        const provider = resolveProvider();
+        if (provider) {
+          // Attempt 1
+          let aiReply = await callAI(provider, history, currentPage);
+
+          // Retry once on failure
+          if (!aiReply) {
+            console.log(`[ai-chat] Retrying ${provider.name} after first failure`);
+            aiReply = await callAI(provider, history, currentPage);
+          }
+
+          if (aiReply) {
+            return new Response(JSON.stringify({ reply: aiReply }), {
+              headers: { "content-type": "application/json" },
+            });
+          }
+
+          // LLM failed twice — fall through to "service failure" message below.
+          console.error(`[ai-chat] ${provider.name} failed after retry`);
         }
-        return new Response(JSON.stringify({ reply }), {
-          headers: { "content-type": "application/json" },
-        });
+
+        // DECISION POINT:
+        //  - If the local engine returned null, the question wasn't answerable from
+        //    the knowledge base → "couldn't find that" response.
+        //  - If a provider exists but failed, that's a genuine service failure →
+        //    "having trouble accessing" response.
+        //  - If no provider exists and the local engine couldn't answer, treat it as
+        //    "couldn't find that" (not a service failure — the service works, we just
+        //    don't have the info).
+
+        if (provider) {
+          // LLM was available but failed → service-failure message.
+          return new Response(JSON.stringify({ reply: serviceFailureReply() }), {
+            headers: { "content-type": "application/json" },
+          });
+        } else {
+          // No LLM, local engine couldn't answer → not-found message.
+          return new Response(JSON.stringify({ reply: notFoundReply() }), {
+            headers: { "content-type": "application/json" },
+          });
+        }
       },
     },
   },
