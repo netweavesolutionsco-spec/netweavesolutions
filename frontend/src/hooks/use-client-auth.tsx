@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -131,20 +132,42 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const configured = isApiConfigured();
 
+  // Monotonic guard so a slow, in-flight auth probe can't overwrite the result
+  // of a newer, explicit auth action. The initial mount runs refreshUser() to
+  // restore an existing session; meanwhile the OAuth callback runs completeOAuth().
+  // Whichever is invoked LAST is authoritative — an older refreshUser resolving
+  // late must not clobber the user completeOAuth just established (the bug that
+  // bounced freshly signed-in Google users back to /client/login).
+  const authSeq = useRef(0);
+
   const refreshUser = useCallback(async () => {
+    const seq = ++authSeq.current;
     try {
       const data = await api.get<{ client?: Partial<ClientUser> }>("/auth/me");
+      if (seq !== authSeq.current) return; // superseded by a newer auth action
       setUser(normalizeClientUser(data.client ?? null));
     } catch (error) {
+      if (seq !== authSeq.current) return; // superseded — don't clear a newer session
       console.warn("Client session refresh failed:", error);
       setUser(null);
       setAccessToken(null);
     } finally {
-      setLoading(false);
+      if (seq === authSeq.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
+    // On the OAuth callback route the session is established by completeOAuth().
+    // Running the normal /auth/me probe here would fire a spurious
+    // "session expired" (no cookie yet) that clears the user completeOAuth is
+    // about to set — leaving the user stranded on the login page. Defer to
+    // completeOAuth on that route; `loading` stays true until it resolves.
+    if (
+      typeof window !== "undefined" &&
+      window.location.pathname.startsWith("/client/oauth-callback")
+    ) {
+      return;
+    }
     void refreshUser();
   }, [refreshUser]);
 
@@ -159,6 +182,7 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string, rememberMe = true) => {
+    const seq = ++authSeq.current;
     const data = await api.post<{ accessToken?: string; client?: Partial<ClientUser> }>(
       "/auth/login",
       {
@@ -167,6 +191,7 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
         rememberMe,
       },
     );
+    if (seq !== authSeq.current) return; // superseded by a newer auth action
     setAccessToken(data.accessToken ?? null);
     setUser(normalizeClientUser(data.client ?? null));
   }, []);
@@ -229,6 +254,7 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
 
     const redirectTo =
       typeof window !== "undefined" ? `${window.location.origin}/client/oauth-callback` : undefined;
+    console.log("[OAuth] Starting Google sign-in, redirectTo:", redirectTo);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo },
@@ -250,6 +276,7 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
   // client record (reusing the same profiles/user_roles model) and returns our
   // own access token. No second auth system — same portal session as password.
   const completeOAuth = useCallback(async () => {
+    console.log("[OAuth] Callback received, completing sign-in");
     // Supabase reports OAuth failures (denied consent, disabled provider,
     // expired code) back on the callback URL as `error` / `error_description`
     // params — in either the query string or the hash fragment. Surface those
@@ -275,22 +302,70 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    const { data, error } = await supabase.auth.getSession();
-    if (error || !data.session) {
-      throw new Error(error?.message ?? "Google sign-in did not complete. Please try again.");
+    // Claim the latest auth sequence up front so an in-flight mount-time
+    // refreshUser() cannot overwrite the user we're about to set below.
+    const seq = ++authSeq.current;
+
+    // Supabase persists the session from the redirect (hash tokens or PKCE code)
+    // asynchronously. Poll getSession() until it exists rather than reading it
+    // once — reading too early returns null and dead-ends the sign-in.
+    const waitForSession = async () => {
+      for (let attempt = 0; attempt < 20; attempt++) {
+        const { data, error } = await supabase.auth.getSession();
+        if (error) throw new Error(error.message);
+        if (data.session) return data.session;
+        await new Promise((r) => setTimeout(r, 150));
+      }
+      return null;
+    };
+
+    // Restore the Supabase session, retrying once before giving up.
+    let session = await waitForSession();
+    if (!session) {
+      console.warn("[OAuth] Session not restored on first pass, retrying once");
+      session = await waitForSession();
     }
-    const synced = await api.post<{ accessToken?: string; client?: Partial<ClientUser> }>(
-      "/auth/oauth/sync",
-      {
-        accessToken: data.session.access_token,
-        refreshToken: data.session.refresh_token,
-      },
-    );
+    if (!session) {
+      console.error("[OAuth] Session restoration failed after retry");
+      throw new Error("Google sign-in did not complete. Please try again.");
+    }
+    console.log("[OAuth] Session restored");
+
+    // Hand the Supabase tokens to our backend, which fetches the authenticated
+    // user, checks/creates the client profile, verifies status, and returns our
+    // own portal session. Profile-creation failures surface as an API error
+    // here rather than silently leaving the user unauthenticated.
+    let synced: { accessToken?: string; client?: Partial<ClientUser> };
+    try {
+      synced = await api.post<{ accessToken?: string; client?: Partial<ClientUser> }>(
+        "/auth/oauth/sync",
+        {
+          accessToken: session.access_token,
+          refreshToken: session.refresh_token,
+        },
+      );
+    } catch (error) {
+      console.error("[OAuth] Backend profile sync failed:", error);
+      throw new Error(
+        error instanceof Error && error.message
+          ? `Could not finish sign-in: ${error.message}`
+          : "Could not create your client profile. Please try again or contact support.",
+      );
+    }
+    console.log("[OAuth] User loaded, profile loaded");
+
     // Clear the client-side Supabase session; the portal session now lives in
     // our own in-memory access token + httpOnly refresh cookie.
     await supabase.auth.signOut().catch(() => {});
-    setAccessToken(synced.accessToken ?? null);
-    setUser(normalizeClientUser(synced.client ?? null));
+
+    // Only publish if this is still the newest auth action (guards against a
+    // late refreshUser() resolving after us).
+    if (seq === authSeq.current) {
+      setAccessToken(synced.accessToken ?? null);
+      setUser(normalizeClientUser(synced.client ?? null));
+      setLoading(false);
+    }
+    console.log("[OAuth] Redirecting to dashboard");
   }, []);
 
   const resendVerification = useCallback(async (email: string) => {
@@ -329,6 +404,7 @@ export function ClientAuthProvider({ children }: { children: ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    ++authSeq.current; // supersede any in-flight probe/login
     try {
       await api.post("/auth/logout");
     } catch {
