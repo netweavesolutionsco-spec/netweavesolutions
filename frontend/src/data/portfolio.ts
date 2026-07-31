@@ -1,8 +1,8 @@
 import stenomaniaImg from "@/assets/proj-stenomania.jpg";
-import aetherpayImg from "@/assets/proj-aetherpay.jpg";
+import crmImg from "@/assets/CRM.png";
 import zenithImg from "@/assets/proj-zenith.jpg";
-import carepulseImg from "@/assets/proj-carepulse.jpg";
 import cognibotImg from "@/assets/proj-cognibot.jpg";
+import inspectxImg from "@/assets/inspectx.jpg";
 import stenomaniaLive from "@/assets/stenomania-preview.svg";
 
 export type Project = {
@@ -62,35 +62,52 @@ export const projects: Project[] = [
     ],
   },
   {
-    slug: "aetherpay-saas",
-    title: "AetherPay Global SaaS",
+    slug: "properties-professor-crm",
+    title: "Properties Professor CRM",
     category: "Web",
-    categoryLabel: "WEB",
-    summary:
-      "Next-generation cross-border payment platform with real-time multi-currency settlement dashboards.",
+    categoryLabel: "WEB · REAL ESTATE CRM",
+    summary: "Advanced Real Estate CRM & Lead Management Platform",
     description:
-      "A cross-border payments SaaS handling FX, compliance, and reconciliation across 40+ currencies with real-time settlement analytics.",
-    tech: ["Next.js", "React", "TypeScript", "Node.js", "Kafka", "ClickHouse"],
-    metric: "Multi-currency dashboard",
+      "Properties Professor CRM is a production-grade real estate management platform developed to streamline property listing operations, broker management, lead handling, inventory management, customer relationships, and media storage workflows. The platform provides a modern responsive dashboard for real estate companies with role-based access, inventory management, employee management, lead tracking, document management, image uploads, task management, analytics, and reporting. It is designed to simplify complete real estate business operations through a scalable cloud-based architecture.",
+    tech: [
+      "React",
+      "TypeScript",
+      "Vite",
+      "Tailwind CSS",
+      "Node.js",
+      "Express.js",
+      "Supabase",
+      "PostgreSQL",
+      "JWT",
+      "REST API",
+      "Cloud Storage",
+      "Vercel",
+      "Render",
+    ],
+    metric: "Production-grade CRM",
     gradient: "from-cyan-500 via-sky-500 to-indigo-600",
-    image: aetherpayImg,
-    liveUrl: "https://demo.aetherpay.io",
+    image: crmImg,
+    liveUrl: "https://dashboard.propertiesprofessor.com/login",
     isLive: true,
-    client: "AetherPay Ltd",
-    industry: "Fintech",
+    client: "Properties Professor",
+    industry: "Real Estate",
     problem:
-      "Legacy cross-border rails were slow, opaque, and had no unified settlement view for finance teams.",
+      "Real estate companies managed listings, brokers, leads, inventory, customer relationships, and media across disconnected tools — with no unified, role-based system to run day-to-day operations at scale.",
     solution:
-      "Event-driven ledger with real-time FX quotes, automated compliance checks and a treasury dashboard.",
+      "A production-grade real estate CRM with a modern, responsive dashboard: role-based access, property and inventory management, broker and employee management, lead tracking, customer CRM, document and image management, task and attendance management, plus analytics and reporting — built on a scalable, cloud-based architecture that simplifies complete real estate business operations.",
     outcomes: [
-      "Real-time FX quote workspace",
-      "Unified settlement dashboard",
-      "Automated reconciliation queue",
+      "Developed a production-ready Real Estate CRM platform.",
+      "Built scalable dashboard architecture.",
+      "Implemented secure authentication.",
+      "Designed role-based management system.",
+      "Developed inventory and lead management modules.",
+      "Integrated cloud storage for media uploads.",
+      "Created responsive admin dashboard.",
     ],
     stats: [
-      { label: "Dashboard", value: "Live" },
-      { label: "Currencies", value: "Multi" },
-      { label: "Workflow", value: "Automated" },
+      { label: "Platform", value: "Production" },
+      { label: "Access", value: "Role-Based" },
+      { label: "Media", value: "Cloud" },
     ],
   },
   {
@@ -121,30 +138,52 @@ export const projects: Project[] = [
     ],
   },
   {
-    slug: "carepulse-telehealth",
-    title: "CarePulse Telehealth Mobile App",
+    slug: "inspectx",
+    title: "InspectX",
     category: "Mobile",
-    categoryLabel: "MOBILE APP",
-    summary:
-      "Cross-platform Flutter application enabling instant video consultations and e-prescriptions.",
+    categoryLabel: "MOBILE APPLICATION",
+    summary: "Inspection Management & Digital Reporting Platform",
     description:
-      "A HIPAA-aware telehealth app for instant doctor consultations, digital prescriptions, and integrated pharmacy delivery.",
-    tech: ["Flutter", "Dart", "Firebase", "WebRTC", "Node.js"],
-    metric: "4.8 ★ stores",
+      "InspectX is a modern inspection management platform designed to digitize inspection workflows for organizations, inspectors, and administrators. The platform enables users to create inspections, record observations, upload supporting media, generate structured reports, monitor inspection history, and manage inspection data from a centralized dashboard. InspectX replaces traditional paper-based inspection processes with a secure, cloud-based solution that improves operational efficiency, transparency, and data accuracy. The application includes role-based authentication, real-time database synchronization, responsive dashboards, secure document management, and scalable backend services suitable for enterprise inspection workflows.",
+    tech: [
+      "React",
+      "TypeScript",
+      "Vite",
+      "Tailwind CSS",
+      "Node.js",
+      "Express.js",
+      "Supabase",
+      "PostgreSQL",
+      "JWT",
+      "REST API",
+      "Cloud Storage",
+      "Responsive Design",
+      "Dashboard",
+      "Role Based Access",
+      "Web Application",
+    ],
+    metric: "Digitized inspections",
     gradient: "from-emerald-500 via-cyan-500 to-sky-500",
-    image: carepulseImg,
-    liveUrl: "https://carepulse.health",
-    isLive: true,
-    client: "CarePulse Health",
-    industry: "Healthcare",
-    problem: "Patients waited days for consultations; clinics lacked a modern virtual care stack.",
+    image: inspectxImg,
+    client: "InspectX",
+    industry: "Inspection & Compliance",
+    problem:
+      "Organizations relied on manual, paper-based inspection processes that were slow, error-prone, and hard to audit — with no centralized way to record observations, attach media, or track inspection history.",
     solution:
-      "Cross-platform mobile app with sub-2s video connect, e-Rx, and pharmacy fulfillment.",
-    outcomes: ["4.8 ★ on both stores", "120k consultations", "Avg wait time 3 min"],
+      "A modern, cloud-based inspection management platform that digitizes inspection workflows for organizations, inspectors, and administrators. Users can create and schedule inspections, record observations, upload supporting media, generate structured reports, and monitor inspection history from a centralized, responsive dashboard — backed by role-based authentication, real-time database sync, secure document management, and scalable backend services for enterprise inspection workflows.",
+    outcomes: [
+      "Developed a production-ready inspection management platform.",
+      "Digitized manual inspection workflows.",
+      "Built responsive dashboard interfaces.",
+      "Implemented secure authentication.",
+      "Enabled structured inspection reporting.",
+      "Designed scalable cloud architecture.",
+      "Improved inspection data management.",
+    ],
     stats: [
-      { label: "Rating", value: "4.8 ★" },
-      { label: "Consultations", value: "120k" },
-      { label: "Wait", value: "3 min" },
+      { label: "Platform", value: "Production" },
+      { label: "Access", value: "Role-Based" },
+      { label: "Sync", value: "Real-Time" },
     ],
   },
   {
