@@ -7,10 +7,18 @@ import { openEstimator } from "@/components/cost-estimator-modal";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { useCollection } from "@/hooks/useCollection";
 
-export function Hero() {
+export function Hero({ overrides }: { overrides?: Partial<{ eyebrow: string; title: string; subtitle: string }> } = {}) {
   const settings = useSiteSettings();
   const projects = useCollection("portfolio");
   const projectsDelivered = projects.length;
+  // Per-section overrides from the Website Builder take precedence when set;
+  // an empty/absent override leaves the global CMS hero settings untouched.
+  const hero = {
+    ...settings.hero,
+    ...(overrides?.eyebrow ? { eyebrow: overrides.eyebrow } : {}),
+    ...(overrides?.title ? { title: overrides.title } : {}),
+    ...(overrides?.subtitle ? { subtitle: overrides.subtitle } : {}),
+  };
 
   const renderTitle = (title: string) => {
     const target = "Powerful Digital Solutions";
@@ -62,7 +70,7 @@ export function Hero() {
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             </span>
             <Sparkles className="h-3.5 w-3.5 text-primary" />
-            {settings.hero.eyebrow}
+            {hero.eyebrow}
           </motion.div>
 
           <motion.h1
@@ -71,7 +79,7 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.05 }}
             className="text-[clamp(2.8rem,4.5vw,4.6rem)] md:text-[clamp(3.4rem,4vw,5.6rem)] font-semibold tracking-[-0.03em] leading-[1.02] text-foreground"
           >
-            {renderTitle(settings.hero.title)}
+            {renderTitle(hero.title)}
           </motion.h1>
 
           <motion.p
@@ -80,7 +88,7 @@ export function Hero() {
             transition={{ duration: 0.5, delay: 0.12 }}
             className="mt-6 max-w-xl text-[clamp(1rem,2.2vw,1.15rem)] text-muted-foreground leading-relaxed"
           >
-            {settings.hero.subtitle}
+            {hero.subtitle}
           </motion.p>
 
           <motion.div

@@ -1,15 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Hero } from "@/components/home/hero";
-import { TechStackBadges } from "@/components/home/tech-stack-badges";
-import { ServicesPreview } from "@/components/home/services-preview";
-import { WhyChooseUs } from "@/components/home/why-choose";
-import { FeaturedProject } from "@/components/home/featured-project";
-import { PortfolioGrid } from "@/components/home/portfolio-grid";
-import { TestimonialsSlider } from "@/components/home/testimonials";
-import { PricingSection } from "@/components/home/pricing-section";
-import { FaqSection } from "@/components/home/faq-section";
-import { ContactCta } from "@/components/home/contact-cta";
-import { ExpertAssistanceForm } from "@/components/home/expert-assistance-form";
+import { useEffect, useState } from "react";
+import { SectionRenderer, useScrollToSelected } from "@/builder/SectionRenderer";
+import { usePage } from "@/hooks/usePage";
+import { isCmsPreview, PREVIEW_SELECT } from "@/hooks/useCmsPreview";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -30,20 +23,26 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  return (
-    <>
-      <Hero />
-      <TechStackBadges />
-      <ServicesPreview />
-      <WhyChooseUs />
-      <FeaturedProject />
-      <PortfolioGrid />
-      <TestimonialsSlider />
-      <PricingSection compact />
-      <FaqSection />
-      <ContactCta />
-      <ExpertAssistanceForm />
-    </>
-  );
-}
+  // The home page renders from CMS page data (seeded to the exact current
+  // composition, so the design is unchanged). usePage is preview-aware: in the
+  // builder iframe it reads the streamed draft instead of published data.
+  const page = usePage("/");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // In preview, the builder tells us which section is selected so we can
+  // highlight it and scroll it into view.
+  useEffect(() => {
+    if (!isCmsPreview() || typeof window === "undefined") return;
+    const onMessage = (e: MessageEvent) => {
+      if (e.source !== window.parent) return;
+      const msg = e.data as { type?: string; id?: string | null } | null;
+      if (msg?.type === PREVIEW_SELECT) setSelectedId(msg.id ?? null);
+    };
+    window.addEventListener("message", onMessage);
+    return () => window.removeEventListener("message", onMessage);
+  }, []);
+
+  useScrollToSelected(selectedId);
+
+  return <SectionRenderer page={page} selectedId={selectedId} />;
+}
